@@ -98,9 +98,17 @@ If `ok` is `False`, mark that account section **NEEDS MANUAL REVIEW** — do not
 ## Setup
 
 ```bash
-uv sync --extra dev
+uv sync --python 3.12 --extra dev
 uv run pytest
 ```
+
+### Browser UI (Streamlit)
+
+```bash
+uv run streamlit run app.py
+```
+
+Opens a local page where you pick a mock account and run an AccountPulse health review.
 
 Or with pip:
 
