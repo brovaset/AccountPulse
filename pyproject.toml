@@ -12,6 +12,7 @@ dependencies = [
     "strands-agents>=1.0",
     "python-dotenv>=1.0",
     "litellm>=1.0",
+    "streamlit>=1.30",
 ]
 
 [project.optional-dependencies]
