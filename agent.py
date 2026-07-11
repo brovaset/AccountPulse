@@ -7,6 +7,7 @@ from strands import Agent, tool
 from strands.models.litellm import LiteLLMModel
 
 from tools.crm import get_crm_account_data as fetch_crm_account_data
+from tools.usage.get_product_usage import get_product_usage
 
 load_dotenv()
 
@@ -41,7 +42,7 @@ For normal account analysis, call the available tools in this order:
    - Contract status
    - Account notes
 
-2. Second, call the product-usage tool to retrieve:
+2. Second, call the product-usage tool (get_product_usage) to retrieve:
    - Login frequency
    - Usage trends
    - Feature adoption
@@ -175,17 +176,21 @@ actions unless the CSM explicitly requests another analysis.
 
 @tool
 def get_crm_account_data(account_id: str) -> dict:
-    """Pull CRM account owner, renewal date, contract status, notes, and health signals.
+    """
+    Pull CRM account owner, renewal date, contract status, notes,
+    and health signals.
 
-    Read-only. Returns a structured payload with ok=True and account data, or ok=False
-    with an error code such as account_not_found or crm_unavailable.
+    Read-only. Returns a structured payload with ok=True and account data,
+    or ok=False with an error code such as account_not_found or
+    crm_unavailable.
 
     Args:
-        account_id: CRM account identifier (for example acc_001).
+        account_id: CRM account identifier, for example acc_001.
 
     Returns:
         CRM account fields and basic health signals, or a structured error.
     """
+
     return fetch_crm_account_data(account_id)
 
 
@@ -210,25 +215,31 @@ def create_model() -> LiteLLMModel:
 
 
 def create_agent() -> Agent:
-    """Create the AccountPulse agent."""
+    """Create the AccountPulse agent with all available tools."""
 
     model = create_model()
 
     return Agent(
         model=model,
         system_prompt=SYSTEM_PROMPT,
-        tools=[get_crm_account_data],
+        tools=[
+            get_crm_account_data,
+            get_product_usage,
+        ],
     )
 
 
 def run() -> None:
-    """Run a CRM integration check against mock account acc_001."""
+    """Run an integration check against mock account acc_001."""
 
     agent = create_agent()
 
     response = agent(
-        "Analyze account acc_001 using the CRM tool. "
-        "Return the result using the required AccountPulse report format."
+        "Analyze account acc_001 using all available tools. "
+        "Call the CRM tool first and the product-usage tool second. "
+        "Return the result using the required AccountPulse report format. "
+        "Mark unavailable support and communication data as "
+        "NEEDS MANUAL REVIEW."
     )
 
     print(response)
