@@ -122,6 +122,7 @@ def get_crm_account_data(
         "renewal_date": record["renewal_date"],
         "contract_status": record["contract_status"],
         "plan_tier": record["plan_tier"],
+        "customer_status": record.get("customer_status") or "unknown",
         "account_notes": record.get("account_notes") or "",
         "last_task_date": record.get("last_task_date"),
         "health_signals": health_signals,
