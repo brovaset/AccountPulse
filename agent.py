@@ -77,7 +77,7 @@ def create_model() -> LiteLLMModel:
         raise ValueError("OPENROUTER_API_KEY was not found in the .env file.")
 
     return LiteLLMModel(
-        model_id="openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        model_id="openrouter/openai/gpt-4o-mini",
         client_args={"api_key": api_key},
         params={"max_tokens": 2048},
     )
