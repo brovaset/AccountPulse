@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from json import tool
 import os
 from datetime import date, datetime
-
+from strands import tool
 from tools.crm.mock_data import MOCK_ACCOUNTS
 from tools.crm.models import (
     AccountHealthSignals,
@@ -55,7 +56,7 @@ def _error(
         "message": message,
     }
 
-
+@tool
 def get_crm_account_data(
     account_id: str,
     *,
