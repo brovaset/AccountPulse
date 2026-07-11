@@ -277,6 +277,7 @@ def fetch_hubspot_account(company_id: str) -> MockAccountRecord:
 
     plan_tier = (props.get(plan_prop) or deal_props.get("dealname") or "Unknown").strip()
     notes = _latest_note(company_id) or (props.get("description") or "").strip()
+    customer_status = (props.get("lifecyclestage") or "unknown").strip()
 
     return {
         "account_id": str(company.get("id") or company_id),
@@ -285,6 +286,31 @@ def fetch_hubspot_account(company_id: str) -> MockAccountRecord:
         "renewal_date": renewal,
         "contract_status": contract_status,
         "plan_tier": plan_tier or "Unknown",
+        "customer_status": customer_status,
         "account_notes": notes,
         "last_task_date": _latest_task_date(company_id),
     }
+
+
+def list_hubspot_company_ids(*, limit: int = 20) -> list[dict[str, str]]:
+    """Return basic company id/name pairs for live CRM verification."""
+    payload = _request(
+        "GET",
+        "/crm/v3/objects/companies",
+        query={
+            "limit": str(limit),
+            "properties": "name,type,lifecyclestage,hubspot_owner_id",
+        },
+    )
+    rows: list[dict[str, str]] = []
+    for company in payload.get("results") or []:
+        props = company.get("properties") or {}
+        rows.append(
+            {
+                "account_id": str(company.get("id") or ""),
+                "account_name": (props.get("name") or "").strip(),
+                "plan_tier": (props.get("type") or "").strip(),
+                "customer_status": (props.get("lifecyclestage") or "").strip(),
+            }
+        )
+    return rows

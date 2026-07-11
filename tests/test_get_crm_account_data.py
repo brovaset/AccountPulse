@@ -31,6 +31,7 @@ def test_happy_path_returns_required_fields():
     assert data["renewal_date"] == "2026-08-24"
     assert data["contract_status"] == "Active"
     assert data["plan_tier"] == "Enterprise"
+    assert data["customer_status"] == "customer"
     assert "budget pressure" in data["account_notes"]
     assert data["last_task_date"] == "2026-06-28"
     assert set(data["health_signals"]) == {
@@ -141,6 +142,7 @@ def test_hubspot_success_maps_into_tool_shape(
             "renewal_date": "2026-08-01",
             "contract_status": "Active",
             "plan_tier": "Pro",
+            "customer_status": "customer",
             "account_notes": "Kickoff complete",
             "last_task_date": "2026-07-01",
         }

@@ -94,6 +94,8 @@ get_crm_account_data("12345678900")
 
 Without `HUBSPOT_ACCESS_TOKEN` (or with `CRM_PROVIDER=mock`), the tool keeps using mock accounts `acc_001`–`acc_005`.
 
+To connect **real** company records (Bath field mapping + UI setup + verify script), see [`tools/HUBSPOT_RECORDS.md`](HUBSPOT_RECORDS.md).
+
 ### Mock account IDs
 
 | ID | Scenario |

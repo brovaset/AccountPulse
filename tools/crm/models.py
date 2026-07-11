@@ -23,6 +23,7 @@ class CrmAccountData(TypedDict):
     renewal_date: str
     contract_status: ContractStatus
     plan_tier: str
+    customer_status: str
     account_notes: str
     last_task_date: str | None
     health_signals: AccountHealthSignals
@@ -51,4 +52,5 @@ class MockAccountRecord(TypedDict):
     contract_status: ContractStatus
     plan_tier: str
     account_notes: str
+    customer_status: NotRequired[str]
     last_task_date: NotRequired[str | None]
