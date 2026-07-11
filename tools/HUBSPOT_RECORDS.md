@@ -43,13 +43,21 @@ Create (or edit) these three companies:
 - **Note:** Contract in renewal negotiation.
 - **Deal:** close date ~28 days out, stage `Contract Sent`
 
-After saving each company, copy the **Company ID** from the HubSpot URL  
-(`.../company/XXXXXXXX/`) into `.env`:
+### Live company IDs (portal `246733333`)
+
+| Company | Company ID | Expected classification |
+|---------|------------|-------------------------|
+| Northwind Analytics | `333055649511` | ACTION NEEDED (renewal ~45d, at-risk) |
+| Brightleaf Retail | `332906103502` | HEALTHY (renewal ~180d) |
+| Harbor Logistics | `333057467115` | WATCH / ACTION NEEDED (renewal ~28d) |
+
+Default smoke-test id in `.env`:
 
 ```bash
-HUBSPOT_TEST_COMPANY_ID=XXXXXXXX
+HUBSPOT_TEST_COMPANY_ID=333055649511
 ```
 
+**Note for Bath:** `plan_tier` currently resolves from the associated deal name when company `type` is empty (e.g. `Northwind Renewal`). Plan text is also in `account_notes` (`Plan: Enterprise` / `Plan: Growth`). Set company Type in HubSpot or `HUBSPOT_PROP_PLAN_TIER` if you need clean plan values.
 ## Verify
 
 ```bash
