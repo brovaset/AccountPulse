@@ -3,11 +3,21 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import pytest
 
 from tools.crm.get_crm_account_data import get_crm_account_data
+from tools.crm.hubspot_client import HubSpotClientError
 from tools.crm.mock_data import FIXTURE_AS_OF
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_crm(monkeypatch: pytest.MonkeyPatch):
+    """Keep default unit tests on mock fixtures even if a HubSpot token exists."""
+    monkeypatch.setenv("CRM_PROVIDER", "mock")
+    monkeypatch.delenv("HUBSPOT_ACCESS_TOKEN", raising=False)
+    monkeypatch.delenv("CRM_FORCE_ERROR", raising=False)
 
 
 def test_happy_path_returns_required_fields():
@@ -110,3 +120,53 @@ def test_empty_notes_account_has_no_recent_note_signal():
     assert result["data"]["last_task_date"] is None
     assert result["data"]["health_signals"]["has_recent_crm_note"] is False
     assert result["data"]["health_signals"]["contract_at_risk"] is True
+
+
+def test_hubspot_success_maps_into_tool_shape(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import importlib
+
+    crm_mod = importlib.import_module("tools.crm.get_crm_account_data")
+
+    monkeypatch.setenv("CRM_PROVIDER", "hubspot")
+    monkeypatch.setenv("HUBSPOT_ACCESS_TOKEN", "test-token")
+
+    def fake_fetch(company_id: str) -> dict[str, Any]:
+        assert company_id == "12345"
+        return {
+            "account_id": "12345",
+            "account_name": "HubSpot Co",
+            "account_owner": "Casey Owner",
+            "renewal_date": "2026-08-01",
+            "contract_status": "Active",
+            "plan_tier": "Pro",
+            "account_notes": "Kickoff complete",
+            "last_task_date": "2026-07-01",
+        }
+
+    monkeypatch.setattr(crm_mod, "fetch_hubspot_account", fake_fetch)
+
+    result = crm_mod.get_crm_account_data("12345", as_of=FIXTURE_AS_OF)
+    assert result["ok"] is True
+    assert result["data"]["account_name"] == "HubSpot Co"
+    assert result["data"]["health_signals"]["renewal_within_60_days"] is True
+
+
+def test_hubspot_not_found_maps_to_tool_error(monkeypatch: pytest.MonkeyPatch):
+    import importlib
+
+    crm_mod = importlib.import_module("tools.crm.get_crm_account_data")
+
+    monkeypatch.setenv("CRM_PROVIDER", "hubspot")
+    monkeypatch.setenv("HUBSPOT_ACCESS_TOKEN", "test-token")
+
+    def boom(_company_id: str):
+        raise HubSpotClientError("account_not_found", "missing company")
+
+    monkeypatch.setattr(crm_mod, "fetch_hubspot_account", boom)
+
+    result = crm_mod.get_crm_account_data("999")
+    assert result["ok"] is False
+    assert result["error"] == "account_not_found"
+    assert result["message"] == "missing company"
