@@ -1,4 +1,5 @@
 .venv/
+.venv-strands/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -6,3 +7,4 @@ __pycache__/
 dist/
 build/
 .DS_Store
+.env

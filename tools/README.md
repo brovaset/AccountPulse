@@ -70,10 +70,22 @@ Simulate CRM outage with `force_error=True` or `CRM_FORCE_ERROR=1`.
 
 ### Agent wiring (Bath)
 
-Register the callable as the first tool in the PRD sequence:
+`agent.py` registers the Strands `@tool` wrapper:
 
 ```python
-tools = [
+from tools.crm import get_crm_account_data as fetch_crm_account_data
+
+@tool
+def get_crm_account_data(account_id: str) -> dict:
+    return fetch_crm_account_data(account_id)
+
+Agent(tools=[get_crm_account_data], ...)
+```
+
+Additional tools can be appended later:
+
+```python
+tools=[
     get_crm_account_data,  # first: CRM / account data
     # get_product_usage_data,
     # get_support_ticket_data,
@@ -86,9 +98,17 @@ If `ok` is `False`, mark that account section **NEEDS MANUAL REVIEW** — do not
 ## Setup
 
 ```bash
-uv sync --extra dev
+uv sync --python 3.12 --extra dev
 uv run pytest
 ```
+
+### Browser UI (Streamlit)
+
+```bash
+uv run streamlit run app.py
+```
+
+Opens a local page where you pick a mock account and run an AccountPulse health review.
 
 Or with pip:
 

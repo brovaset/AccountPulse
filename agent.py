@@ -3,9 +3,10 @@
 import os
 
 from dotenv import load_dotenv
-from strands import Agent
+from strands import Agent, tool
 from strands.models.litellm import LiteLLMModel
-from tools.crm.get_crm_account_data import get_crm_account_data
+
+from tools.crm import get_crm_account_data as fetch_crm_account_data
 
 load_dotenv()
 
@@ -33,7 +34,7 @@ TOOL CALL SEQUENCE
 
 For normal account analysis, call the available tools in this order:
 
-1. First, call the CRM/account tool to retrieve:
+1. First, call the CRM/account tool (get_crm_account_data) to retrieve:
    - Account name
    - Account owner
    - Renewal date
@@ -60,6 +61,11 @@ For normal account analysis, call the available tools in this order:
 
 Do not produce the final account-health report until all available tools
 have been called.
+
+Call every available tool before producing the final report. Tools that are
+not connected yet should be treated as unavailable: mark those sections
+NEEDS MANUAL REVIEW and continue with the data you have. Do not invent
+missing data.
 
 If a tool fails, returns no data, or returns conflicting data, do not guess.
 Place the affected account under NEEDS MANUAL REVIEW and continue using the
@@ -167,6 +173,22 @@ actions unless the CSM explicitly requests another analysis.
 """
 
 
+@tool
+def get_crm_account_data(account_id: str) -> dict:
+    """Pull CRM account owner, renewal date, contract status, notes, and health signals.
+
+    Read-only. Returns a structured payload with ok=True and account data, or ok=False
+    with an error code such as account_not_found or crm_unavailable.
+
+    Args:
+        account_id: CRM account identifier (for example acc_001).
+
+    Returns:
+        CRM account fields and basic health signals, or a structured error.
+    """
+    return fetch_crm_account_data(account_id)
+
+
 def create_model() -> LiteLLMModel:
     """Create the OpenRouter model used by AccountPulse."""
 
@@ -178,12 +200,10 @@ def create_model() -> LiteLLMModel:
         )
 
     return LiteLLMModel(
-       model_id="openrouter/openai/gpt-4o-mini",
-        client_args={
-            "api_key": api_key,
-        },
+        model_id="openrouter/openai/gpt-4o-mini",
+        client_args={"api_key": api_key},
         params={
-            "max_tokens": 1200,
+            "max_tokens": 2048,
             "temperature": 0,
         },
     )
@@ -202,14 +222,14 @@ def create_agent() -> Agent:
 
 
 def run() -> None:
-    """Run a short system-prompt setup test."""
+    """Run a CRM integration check against mock account acc_001."""
 
     agent = create_agent()
 
     response = agent(
-    "Analyze account acc_001 using the CRM tool. "
-    "Return the result using the required AccountPulse report format."
-)
+        "Analyze account acc_001 using the CRM tool. "
+        "Return the result using the required AccountPulse report format."
+    )
 
     print(response)
 
