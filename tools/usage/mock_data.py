@@ -1,5 +1,11 @@
 """Mock product-usage data for AccountPulse development and testing."""
 
+HUBSPOT_TO_USAGE_ACCOUNT = {
+    "333055649511": "acc_001",  # Northwind Analytics
+    "332906103502": "acc_002",  # Brightleaf Retail
+    "333057467115": "acc_003",  # Harbor Logistics
+}
+
 MOCK_PRODUCT_USAGE = {
     "acc_001": {
         "account_id": "acc_001",
