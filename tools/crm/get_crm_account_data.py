@@ -1,10 +1,15 @@
-"""Read-only CRM account data tool (mock-backed for MVP)."""
+"""Read-only CRM account data tool (HubSpot + mock fallback)."""
 
 from __future__ import annotations
 
 import os
 from datetime import date, datetime
 
+from tools.crm.hubspot_client import (
+    HubSpotClientError,
+    fetch_hubspot_account,
+    hubspot_enabled,
+)
 from tools.crm.mock_data import MOCK_ACCOUNTS
 from tools.crm.models import (
     AccountHealthSignals,
@@ -56,6 +61,10 @@ def _error(
     }
 
 
+def _load_mock_record(account_id: str) -> MockAccountRecord | None:
+    return MOCK_ACCOUNTS.get(account_id)
+
+
 def get_crm_account_data(
     account_id: str,
     *,
@@ -64,7 +73,8 @@ def get_crm_account_data(
 ) -> CrmToolResult:
     """Fetch CRM account fields and basic health signals.
 
-    Read-only. Uses mock fixtures until a real CRM client is wired in.
+    Uses HubSpot when ``HUBSPOT_ACCESS_TOKEN`` is set (or ``CRM_PROVIDER=hubspot``).
+    Otherwise falls back to local mock fixtures.
     Set CRM_FORCE_ERROR=1 (or pass force_error=True) to simulate outages.
     """
     account_id = (account_id or "").strip()
@@ -83,13 +93,24 @@ def get_crm_account_data(
             "CRM API is temporarily unavailable",
         )
 
-    record = MOCK_ACCOUNTS.get(account_id)
-    if record is None:
-        return _error(
-            account_id,
-            "account_not_found",
-            f"No CRM account found for id '{account_id}'",
+    try:
+        if hubspot_enabled():
+            record = fetch_hubspot_account(account_id)
+        else:
+            record = _load_mock_record(account_id)
+            if record is None:
+                return _error(
+                    account_id,
+                    "account_not_found",
+                    f"No CRM account found for id '{account_id}'",
+                )
+    except HubSpotClientError as exc:
+        code: CrmErrorCode = (
+            "account_not_found"
+            if exc.code == "account_not_found"
+            else "crm_unavailable"
         )
+        return _error(account_id, code, exc.message)
 
     reference_date = as_of or date.today()
     health_signals = _build_health_signals(record, as_of=reference_date)
