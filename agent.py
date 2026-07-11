@@ -230,12 +230,13 @@ def create_agent() -> Agent:
 
 
 def run() -> None:
-    """Run an integration check against mock account acc_001."""
+    """Run an integration check (HubSpot company id when configured)."""
 
     agent = create_agent()
+    account_id = os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip() or "acc_001"
 
     response = agent(
-        "Analyze account acc_001 using all available tools. "
+        f"Analyze account {account_id} using all available tools. "
         "Call the CRM tool first and the product-usage tool second. "
         "Return the result using the required AccountPulse report format. "
         "Mark unavailable support and communication data as "
