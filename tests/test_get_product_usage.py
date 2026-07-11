@@ -47,3 +47,30 @@ def test_usage_service_failure():
 
     assert result["ok"] is False
     assert result["error"] == "usage_service_unavailable"
+
+
+def test_northwind_hubspot_id_maps_to_acc_001():
+    result = fetch_product_usage("333055649511")
+
+    assert result["ok"] is True
+    assert result["requested_account_id"] == "333055649511"
+    assert result["usage_account_id"] == "acc_001"
+    assert result["account"]["usage_trend"] == "stable"
+
+
+def test_brightleaf_hubspot_id_maps_to_acc_002():
+    result = fetch_product_usage("332906103502")
+
+    assert result["ok"] is True
+    assert result["requested_account_id"] == "332906103502"
+    assert result["usage_account_id"] == "acc_002"
+    assert result["account"]["usage_trend"] == "declining"
+
+
+def test_harbor_hubspot_id_maps_to_acc_003():
+    result = fetch_product_usage("333057467115")
+
+    assert result["ok"] is True
+    assert result["requested_account_id"] == "333057467115"
+    assert result["usage_account_id"] == "acc_003"
+    assert result["account"]["usage_trend"] == "inactive"
