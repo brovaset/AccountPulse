@@ -8,7 +8,11 @@ version = "0.1.0"
 description = "AccountPulse Customer Success agent tools"
 readme = "tools/README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "strands-agents>=1.0",
+    "python-dotenv>=1.0",
+    "litellm>=1.0",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

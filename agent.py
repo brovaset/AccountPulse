@@ -3,8 +3,10 @@
 import os
 
 from dotenv import load_dotenv
-from strands import Agent
+from strands import Agent, tool
 from strands.models.litellm import LiteLLMModel
+
+from tools.crm import get_crm_account_data as fetch_crm_account_data
 
 load_dotenv()
 
@@ -16,12 +18,12 @@ Your job is to help the CSM identify which customer accounts need attention toda
 You do not make final business decisions. You only gather data, classify risk, explain your reasoning, and recommend next actions for human review.
 
 Tool call sequence:
-1. First, call the CRM/account tool.
+1. First, call the CRM/account tool (get_crm_account_data).
 2. Second, call the product usage tool.
 3. Third, call the support ticket tool.
 4. Fourth, call the communication activity tool.
 
-Do not produce the final report until all available tools have been called.
+Call every available tool before producing the final report. Tools that are not connected yet should be treated as unavailable: mark those sections NEEDS MANUAL REVIEW and continue with the data you have. Do not invent missing data.
 
 If one tool fails or returns no data, do not guess. Mark the account as NEEDS MANUAL REVIEW and continue using the other available data.
 
@@ -48,8 +50,24 @@ Do not:
 - Invent missing data
 
 After all available tools have been called and the required report has been produced, stop.
-During development, if no tools are connected and the user asks for a setup test, respond briefly without attempting account analysis.
+During development, if the user asks for a setup test (not an account analysis), respond briefly without attempting account analysis.
 """
+
+
+@tool
+def get_crm_account_data(account_id: str) -> dict:
+    """Pull CRM account owner, renewal date, contract status, notes, and health signals.
+
+    Read-only. Returns a structured payload with ok=True and account data, or ok=False
+    with an error code such as account_not_found or crm_unavailable.
+
+    Args:
+        account_id: CRM account identifier (for example acc_001).
+
+    Returns:
+        CRM account fields and basic health signals, or a structured error.
+    """
+    return fetch_crm_account_data(account_id)
 
 
 def create_model() -> LiteLLMModel:
@@ -71,7 +89,7 @@ def create_agent() -> Agent:
     return Agent(
         model=model,
         system_prompt=SYSTEM_PROMPT,
-        tools=[],
+        tools=[get_crm_account_data],
     )
 
 
