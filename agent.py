@@ -237,16 +237,32 @@ def create_model() -> LiteLLMModel:
             },
         )
 
+    # Default to a small local model so 8GB laptops stay usable.
+    # Override with OLLAMA_MODEL=qwen2.5:7b on machines with 16GB+ RAM.
+    model_name = os.getenv("OLLAMA_MODEL", "qwen2.5:3b").strip() or "qwen2.5:3b"
+    api_base = (
+        os.getenv("OLLAMA_API_BASE", "http://localhost:11434").strip()
+        or "http://localhost:11434"
+    )
+    try:
+        max_tokens = int(os.getenv("OLLAMA_MAX_TOKENS", "1536"))
+    except ValueError:
+        max_tokens = 1536
+    try:
+        num_ctx = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
+    except ValueError:
+        num_ctx = 4096
+
     return LiteLLMModel(
-    model_id="ollama_chat/qwen2.5:7b",
-    client_args={
-        "api_base": "http://localhost:11434",
-    },
-    params={
-        "max_tokens": 4096,
-        "temperature": 0,
-    },
-)
+        model_id=f"ollama_chat/{model_name}",
+        client_args={"api_base": api_base},
+        params={
+            "max_tokens": max_tokens,
+            "temperature": 0,
+            # Keep context small so Ollama does not pin most of system RAM.
+            "extra_body": {"options": {"num_ctx": num_ctx}},
+        },
+    )
 
 
 def create_agent() -> Agent:

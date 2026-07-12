@@ -47,9 +47,15 @@ def _get_agent():
     return create_agent()
 
 
-if not os.getenv("OPENROUTER_API_KEY"):
+provider = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
+if provider == "openrouter" and not os.getenv("OPENROUTER_API_KEY"):
     st.error("Add OPENROUTER_API_KEY to your `.env` file, then restart Streamlit.")
     st.stop()
+elif provider == "ollama":
+    st.caption(
+        f"Local model: `{os.getenv('OLLAMA_MODEL', 'qwen2.5:3b')}` "
+        "(set OLLAMA_MODEL in `.env`; use qwen2.5:7b only if you have 16GB+ RAM)."
+    )
 
 account_ids = list_mock_account_ids()
 selected_id = st.selectbox(
