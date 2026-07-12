@@ -162,6 +162,26 @@ Always explain which signals caused each risk classification.
 Human approval is required before any customer-facing action,
 account-changing action, or business decision.
 
+FINAL RESPONSE REQUIREMENT
+
+After all available tools return their results, do not stop at the tool-call
+stage.
+
+You must use the returned CRM and product-usage data to produce the complete
+AccountPulse report in the required output format.
+
+A tool call by itself is not a final answer. Do not finish the response until
+the report contains:
+
+1. ACTION NEEDED
+2. WATCH
+3. HEALTHY
+4. NEEDS MANUAL REVIEW
+5. SUMMARY FOR CSM
+
+Even when some tools are unavailable, complete the report using the available
+data and clearly identify missing sections under NEEDS MANUAL REVIEW.
+
 TERMINATION CONDITION
 
 For normal analysis, stop after:
@@ -185,7 +205,8 @@ def get_crm_account_data(account_id: str) -> dict:
     crm_unavailable.
 
     Args:
-        account_id: CRM account identifier, for example acc_001.
+        account_id: CRM account identifier, such as acc_001
+            or a HubSpot company ID.
 
     Returns:
         CRM account fields and basic health signals, or a structured error.
@@ -195,23 +216,37 @@ def get_crm_account_data(account_id: str) -> dict:
 
 
 def create_model() -> LiteLLMModel:
-    """Create the OpenRouter model used by AccountPulse."""
+    """Create the model used by AccountPulse."""
 
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    provider = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
 
-    if not api_key:
-        raise ValueError(
-            "OPENROUTER_API_KEY was not found in the .env file."
+    if provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+
+        if not api_key:
+            raise ValueError(
+                "OPENROUTER_API_KEY was not found in the .env file."
+            )
+
+        return LiteLLMModel(
+            model_id="openrouter/openai/gpt-4o-mini",
+            client_args={"api_key": api_key},
+            params={
+                "max_tokens": 2048,
+                "temperature": 0,
+            },
         )
 
     return LiteLLMModel(
-        model_id="openrouter/openai/gpt-4o-mini",
-        client_args={"api_key": api_key},
-        params={
-            "max_tokens": 2048,
-            "temperature": 0,
-        },
-    )
+    model_id="ollama_chat/qwen2.5:7b",
+    client_args={
+        "api_base": "http://localhost:11434",
+    },
+    params={
+        "max_tokens": 4096,
+        "temperature": 0,
+    },
+)
 
 
 def create_agent() -> Agent:
@@ -230,18 +265,26 @@ def create_agent() -> Agent:
 
 
 def run() -> None:
-    """Run an integration check (HubSpot company id when configured)."""
+    """Run a live integration check for Northwind Analytics."""
 
     agent = create_agent()
-    account_id = os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip() or "acc_001"
+
+    account_id = (
+    os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip()
+    or "acc_001"
+)
 
     response = agent(
-        f"Analyze account {account_id} using all available tools. "
-        "Call the CRM tool first and the product-usage tool second. "
-        "Return the result using the required AccountPulse report format. "
-        "Mark unavailable support and communication data as "
-        "NEEDS MANUAL REVIEW."
-    )
+    f"Analyze account {account_id} using all available tools. "
+    "Call get_crm_account_data first. "
+    "Then call get_product_usage using the same account ID. "
+    "After both tool results are returned, continue processing and produce "
+    "the complete final AccountPulse report. "
+    "Do not stop after calling the tools. "
+    "Use the required report sections exactly: ACTION NEEDED, WATCH, "
+    "HEALTHY, NEEDS MANUAL REVIEW, and SUMMARY FOR CSM. "
+    "Mark unavailable support and communication data as NEEDS MANUAL REVIEW."
+)
 
     print(response)
 
