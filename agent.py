@@ -7,6 +7,7 @@ from strands import Agent, tool
 from strands.models.litellm import LiteLLMModel
 
 from tools.crm import get_crm_account_data as fetch_crm_account_data
+from tools.report import analyze_account
 from tools.usage.get_product_usage import get_product_usage
 
 load_dotenv()
@@ -68,9 +69,13 @@ not connected yet should be treated as unavailable: mark those sections
 NEEDS MANUAL REVIEW and continue with the data you have. Do not invent
 missing data.
 
-If a tool fails, returns no data, or returns conflicting data, do not guess.
-Place the affected account under NEEDS MANUAL REVIEW and continue using the
-other available data.
+If a tool returns ``ok: true``, you MUST use that payload. Never claim the
+tool failed, never invent a missing account_id, and never ask the CSM to
+"retrieve the account id" when the user already provided one and the tool
+returned data.
+
+If a tool returns ``ok: false``, put only that data source under
+NEEDS MANUAL REVIEW and continue with other available data.
 
 RISK CLASSIFICATION RULES
 
@@ -281,28 +286,14 @@ def create_agent() -> Agent:
 
 
 def run() -> None:
-    """Run a live integration check for Northwind Analytics."""
-
-    agent = create_agent()
+    """Run a live integration check (deterministic report from real tools)."""
 
     account_id = (
-    os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip()
-    or "acc_001"
-)
-
-    response = agent(
-    f"Analyze account {account_id} using all available tools. "
-    "Call get_crm_account_data first. "
-    "Then call get_product_usage using the same account ID. "
-    "After both tool results are returned, continue processing and produce "
-    "the complete final AccountPulse report. "
-    "Do not stop after calling the tools. "
-    "Use the required report sections exactly: ACTION NEEDED, WATCH, "
-    "HEALTHY, NEEDS MANUAL REVIEW, and SUMMARY FOR CSM. "
-    "Mark unavailable support and communication data as NEEDS MANUAL REVIEW."
-)
-
-    print(response)
+        os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip() or "acc_001"
+    )
+    # Prefer deterministic analysis so small local models cannot misread
+    # successful HubSpot/usage tool JSON during smoke tests and demos.
+    print(analyze_account(account_id))
 
 
 if __name__ == "__main__":

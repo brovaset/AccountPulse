@@ -7,8 +7,9 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 
-from agent import create_agent
+from tools.crm.hubspot_client import hubspot_enabled
 from tools.crm.mock_data import MOCK_ACCOUNTS, list_mock_account_ids
+from tools.report import analyze_account
 
 load_dotenv()
 
@@ -18,82 +19,65 @@ st.set_page_config(
 )
 
 st.title("AccountPulse")
-st.caption("Customer Success account-health agent — review risk signals before you act.")
+st.caption(
+    "Customer Success account-health agent — review risk signals before you act."
+)
+
+LIVE_HUBSPOT_ACCOUNTS = {
+    "333055649511": "Northwind Analytics (live HubSpot)",
+    "332906103502": "Brightleaf Retail (live HubSpot)",
+    "333057467115": "Harbor Logistics (live HubSpot)",
+}
 
 
 def _account_label(account_id: str) -> str:
+    if account_id in LIVE_HUBSPOT_ACCOUNTS:
+        return f"{account_id} — {LIVE_HUBSPOT_ACCOUNTS[account_id]}"
     account = MOCK_ACCOUNTS[account_id]
     return f"{account_id} — {account['account_name']} ({account['contract_status']})"
 
 
-def _result_text(result: object) -> str:
-    if result is None:
-        return ""
-    message = getattr(result, "message", None)
-    if isinstance(message, dict):
-        parts = message.get("content") or []
-        texts = [
-            block.get("text", "")
-            for block in parts
-            if isinstance(block, dict) and block.get("text")
-        ]
-        if texts:
-            return "\n".join(texts)
-    return str(result)
-
-
-@st.cache_resource
-def _get_agent():
-    return create_agent()
-
-
 provider = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
-if provider == "openrouter" and not os.getenv("OPENROUTER_API_KEY"):
-    st.error("Add OPENROUTER_API_KEY to your `.env` file, then restart Streamlit.")
-    st.stop()
-elif provider == "ollama":
+st.caption(
+    "Reports use live CRM/usage tools with deterministic risk rules "
+    "(reliable for demos). Support/comms stay NEEDS MANUAL REVIEW."
+)
+if provider == "ollama":
     st.caption(
-        f"Local model: `{os.getenv('OLLAMA_MODEL', 'qwen2.5:3b')}` "
-        "(set OLLAMA_MODEL in `.env`; use qwen2.5:7b only if you have 16GB+ RAM)."
+        f"Optional LLM provider configured: Ollama "
+        f"`{os.getenv('OLLAMA_MODEL', 'qwen2.5:3b')}` "
+        "(not required for the standard review button)."
     )
 
-account_ids = list_mock_account_ids()
+account_ids = list(LIVE_HUBSPOT_ACCOUNTS) + list_mock_account_ids()
+if not hubspot_enabled():
+    account_ids = list_mock_account_ids()
+
 selected_id = st.selectbox(
     "Account",
     options=account_ids,
     format_func=_account_label,
+    index=0,
 )
 
-account = MOCK_ACCOUNTS[selected_id]
-with st.expander("CRM preview (mock)", expanded=False):
-    st.write(
-        {
-            "owner": account["account_owner"],
-            "renewal_date": account["renewal_date"],
-            "contract_status": account["contract_status"],
-            "plan_tier": account["plan_tier"],
-        }
-    )
-
-custom_prompt = st.text_area(
-    "Optional instructions",
-    value="",
-    placeholder="Leave blank to run the standard account-health review.",
-    height=80,
-)
+if selected_id in MOCK_ACCOUNTS:
+    account = MOCK_ACCOUNTS[selected_id]
+    with st.expander("CRM preview (mock)", expanded=False):
+        st.write(
+            {
+                "owner": account["account_owner"],
+                "renewal_date": account["renewal_date"],
+                "contract_status": account["contract_status"],
+                "plan_tier": account["plan_tier"],
+            }
+        )
+else:
+    st.info("Live HubSpot company — CRM will be fetched when you run the review.")
 
 if st.button("Run account health review", type="primary"):
-    prompt = custom_prompt.strip() or (
-        f"Analyze account {selected_id} ({account['account_name']}). "
-        "Call get_crm_account_data first. Mark unavailable tools as NEEDS MANUAL REVIEW. "
-        "Return the required report sections."
-    )
-
-    with st.spinner("AccountPulse is gathering signals..."):
+    with st.spinner("AccountPulse is gathering CRM and usage signals..."):
         try:
-            agent = _get_agent()
-            result = agent(prompt)
-            report = _result_text(result)
+            report = analyze_account(selected_id)
         except Exception as exc:  # noqa: BLE001 — surface live demo failures in UI
             st.exception(exc)
         else:

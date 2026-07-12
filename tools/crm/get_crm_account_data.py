@@ -95,7 +95,15 @@ def get_crm_account_data(
 
     try:
         if hubspot_enabled():
-            record = fetch_hubspot_account(account_id)
+            try:
+                record = fetch_hubspot_account(account_id)
+            except HubSpotClientError as exc:
+                # Keep mock fixtures usable in the UI while HubSpot is configured.
+                mock_record = _load_mock_record(account_id)
+                if exc.code == "account_not_found" and mock_record is not None:
+                    record = mock_record
+                else:
+                    raise
         else:
             record = _load_mock_record(account_id)
             if record is None:
