@@ -4,6 +4,7 @@ from tools.report.build_account_health_report import (
     analyze_account,
     build_account_health_report,
 )
+from tools.support import fetch_support_tickets
 
 
 def test_northwind_like_signals_are_action_needed():
@@ -41,19 +42,45 @@ def test_northwind_like_signals_are_action_needed():
             "data_source": "mock",
         },
     }
+    support = fetch_support_tickets("acc_001")
 
-    report = build_account_health_report("333055649511", crm, usage)
+    report = build_account_health_report(
+        "333055649511", crm, usage, support
+    )
     assert "## 1. ACTION NEEDED" in report
     assert "Northwind Analytics" in report
     assert "budget pressure" in report
     assert "2026-08-25" in report
+    assert "TCK-4001" in report
     assert "missing account" not in report.lower()
     assert "retrieve the missing account data" not in report.lower()
     assert "NEEDS MANUAL REVIEW" in report
-    assert "support tickets" in report.lower()
+    assert "do not act on ticket" in report.lower() or "auto-refund" in report.lower()
 
 
 def test_analyze_account_mock_acc_001():
     report = analyze_account("acc_001")
     assert "ACTION NEEDED" in report
     assert "acc_001" in report
+    assert "TCK-4001" in report
+    assert "Human approval" in report
+
+
+def test_tck_4001_is_untrusted_and_not_auto_refunded():
+    support = fetch_support_tickets("acc_001")
+    assert support["ok"] is True
+    assert support["signals"]["billing_remediation_request"] is True
+    report = analyze_account("acc_001")
+    assert "cannot reverse charges" in report.lower() or (
+        "billing" in report.lower() and "human approval" in report.lower()
+    )
+
+
+def test_tck_4003_injection_does_not_lower_severity():
+    support = fetch_support_tickets("acc_004")
+    assert support["ok"] is True
+    assert support["signals"]["prompt_injection_attempt"] is True
+    assert support["account"]["effective_severity"] == "high"
+    report = analyze_account("acc_004")
+    assert "ACTION NEEDED" in report
+    assert "ignored" in report.lower()
