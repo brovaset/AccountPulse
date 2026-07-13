@@ -4,7 +4,7 @@ from tools.report.build_account_health_report import (
     analyze_account,
     build_account_health_report,
 )
-from tools.support import fetch_support_ticket_data
+from tools.support import fetch_support_tickets
 
 
 def test_northwind_like_signals_are_action_needed():
@@ -42,7 +42,7 @@ def test_northwind_like_signals_are_action_needed():
             "data_source": "mock",
         },
     }
-    support = fetch_support_ticket_data("acc_001")
+    support = fetch_support_tickets("acc_001")
 
     report = build_account_health_report(
         "333055649511", crm, usage, support
@@ -67,14 +67,20 @@ def test_analyze_account_mock_acc_001():
 
 
 def test_tck_4001_is_untrusted_and_not_auto_refunded():
-    support = fetch_support_ticket_data("acc_001")
+    support = fetch_support_tickets("acc_001")
     assert support["ok"] is True
-    ticket = support["tickets"][0]
-    assert ticket["ticket_id"] == "TCK-4001"
-    assert ticket["severity"] == "high"
-    assert "charged twice" in ticket["content"]
-    # Tool exposes the request; report path must not execute it.
+    assert support["signals"]["billing_remediation_request"] is True
     report = analyze_account("acc_001")
     assert "cannot reverse charges" in report.lower() or (
         "billing" in report.lower() and "human approval" in report.lower()
     )
+
+
+def test_tck_4003_injection_does_not_lower_severity():
+    support = fetch_support_tickets("acc_004")
+    assert support["ok"] is True
+    assert support["signals"]["prompt_injection_attempt"] is True
+    assert support["account"]["effective_severity"] == "high"
+    report = analyze_account("acc_004")
+    assert "ACTION NEEDED" in report
+    assert "ignored" in report.lower()
