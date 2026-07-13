@@ -8,6 +8,7 @@ from strands.models.litellm import LiteLLMModel
 
 from tools.crm import get_crm_account_data as fetch_crm_account_data
 from tools.report import analyze_account
+from tools.support import get_support_ticket_data
 from tools.usage.get_product_usage import get_product_usage
 
 load_dotenv()
@@ -281,6 +282,7 @@ def create_agent() -> Agent:
         tools=[
             get_crm_account_data,
             get_product_usage,
+            get_support_ticket_data,
         ],
     )
 
