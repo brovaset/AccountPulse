@@ -8,6 +8,7 @@ from strands import Agent, tool
 from strands.models.litellm import LiteLLMModel
 
 from tools.crm import get_crm_account_data as fetch_crm_account_data
+from tools.report import analyze_account
 from tools.usage.get_product_usage import (
     fetch_product_usage,
     get_product_usage,
@@ -72,9 +73,13 @@ not connected yet should be treated as unavailable: mark those sections
 NEEDS MANUAL REVIEW and continue with the data you have. Do not invent
 missing data.
 
-If a tool fails, returns no data, or returns conflicting data, do not guess.
-Place the affected account under NEEDS MANUAL REVIEW and continue using the
-other available data.
+If a tool returns ``ok: true``, you MUST use that payload. Never claim the
+tool failed, never invent a missing account_id, and never ask the CSM to
+"retrieve the account id" when the user already provided one and the tool
+returned data.
+
+If a tool returns ``ok: false``, put only that data source under
+NEEDS MANUAL REVIEW and continue with other available data.
 
 RISK CLASSIFICATION RULES
 
