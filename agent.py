@@ -9,6 +9,10 @@ from strands.models.litellm import LiteLLMModel
 
 from tools.crm import get_crm_account_data as fetch_crm_account_data
 from tools.report import analyze_account
+from tools.support.get_support_tickets import (
+    fetch_support_tickets,
+    get_support_tickets,
+)
 from tools.usage.get_product_usage import (
     fetch_product_usage,
     get_product_usage,
@@ -221,15 +225,21 @@ HEALTHY:
 - Product usage is active
 - Renewal is not urgent
 - No major warning signal exists
+- No high-severity unresolved support issue
+- Support volume is low or stable
 
 WATCH:
 - One meaningful warning signal exists
-- Examples include declining usage or an unresolved concern
+- Examples include declining usage, ticket volume increasing, or an unresolved support concern
+- An unresolved ticket exists but does not meet ACTION NEEDED criteria
 
 ACTION NEEDED:
 - Multiple warning signals exist
 - Renewal is within 60 days
 - Product usage declined by more than 20 percent
+- A high-severity ticket has been unresolved for 7 or more days
+- unresolved_high_severity_over_7_days is true
+- Multiple warning signals exist across CRM, usage, and support
 - Contract status or CRM notes indicate elevated risk
 
 If important information is unavailable, do not invent it. Identify it under
@@ -351,6 +361,7 @@ def create_agent() -> Agent:
         tools=[
             get_crm_account_data,
             get_product_usage,
+            get_support_tickets,
         ],
     )
 
@@ -376,16 +387,14 @@ def run() -> None:
     # Retrieve each currently available source exactly once.
     crm_result = fetch_crm_account_data(account_id)
     usage_result = fetch_product_usage(account_id)
+    support_result = fetch_support_tickets(account_id)
 
     evidence = {
         "account_id": account_id,
         "crm_result": crm_result,
         "product_usage_result": usage_result,
+        "support_ticket_result": support_result,
         "unavailable_sources": [
-            {
-                "source": "support-ticket data",
-                "reason": "Support-ticket tool is not connected yet.",
-            },
             {
                 "source": "communication-activity data",
                 "reason": "Communication-activity tool is not connected yet.",
