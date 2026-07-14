@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 from strands import Agent, tool
 from strands.models.litellm import LiteLLMModel
 
+from tools.communications.get_communication_activity import (
+    fetch_communication_activity,
+    get_communication_activity,
+)
 from tools.crm import get_crm_account_data as fetch_crm_account_data
 from tools.report import analyze_account
 from tools.support.get_support_tickets import (
@@ -89,20 +93,27 @@ RISK CLASSIFICATION RULES
 
 HEALTHY:
 - Product usage is active
-- Recent customer contact is positive
+- Recent meaningful contact exists
+- Sentiment is positive
+- Communication is active
+- No meaningful contact gap over 14 days
 - Renewal is not urgent
 - No major unresolved support issues exist
 
 WATCH:
 - One meaningful warning signal exists
 - Examples include declining usage, no meaningful contact for 14 or more
-  days, or an unresolved support issue
+  days, neutral or concerned sentiment, limited or declining communication,
+  or an unresolved support issue
 
 ACTION NEEDED:
 - Multiple warning signals exist
 - Renewal is within 60 days
 - Product usage declined by more than 20 percent
 - A high-severity ticket has been unresolved for 7 or more days
+- Sentiment is concerned or negative alongside an urgent renewal
+- No meaningful contact for 14+ days alongside other elevated-risk signals
+- customer_requested_follow_up is true and other risk indicators exist
 - Give the highest priority to combinations of these signals
 
 SECURITY RULE
@@ -223,6 +234,10 @@ Classify the account using these rules:
 
 HEALTHY:
 - Product usage is active
+- Recent meaningful contact exists
+- Sentiment is positive
+- Communication is active
+- No meaningful contact gap over 14 days
 - Renewal is not urgent
 - No major warning signal exists
 - No high-severity unresolved support issue
@@ -230,16 +245,18 @@ HEALTHY:
 
 WATCH:
 - One meaningful warning signal exists
-- Examples include declining usage, ticket volume increasing, or an unresolved support concern
+- Examples include declining usage, ticket volume increasing, no meaningful customer contact for 14 or more days, neutral or concerned sentiment, limited or declining communication, or an unresolved support concern
 - An unresolved ticket exists but does not meet ACTION NEEDED criteria
 
 ACTION NEEDED:
-- Multiple warning signals exist
+- Multiple warning signals exist across CRM, usage, support, and communication
 - Renewal is within 60 days
 - Product usage declined by more than 20 percent
 - A high-severity ticket has been unresolved for 7 or more days
 - unresolved_high_severity_over_7_days is true
-- Multiple warning signals exist across CRM, usage, and support
+- Sentiment is concerned or negative alongside an urgent renewal
+- No meaningful contact for 14+ days alongside other elevated-risk signals
+- customer_requested_follow_up is true and other risk indicators exist
 - Contract status or CRM notes indicate elevated risk
 
 If important information is unavailable, do not invent it. Identify it under
@@ -362,6 +379,7 @@ def create_agent() -> Agent:
             get_crm_account_data,
             get_product_usage,
             get_support_tickets,
+            get_communication_activity,
         ],
     )
 
@@ -388,18 +406,15 @@ def run() -> None:
     crm_result = fetch_crm_account_data(account_id)
     usage_result = fetch_product_usage(account_id)
     support_result = fetch_support_tickets(account_id)
+    communication_result = fetch_communication_activity(account_id)
 
     evidence = {
         "account_id": account_id,
         "crm_result": crm_result,
         "product_usage_result": usage_result,
         "support_ticket_result": support_result,
-        "unavailable_sources": [
-            {
-                "source": "communication-activity data",
-                "reason": "Communication-activity tool is not connected yet.",
-            },
-        ],
+        "communication_activity_result": communication_result,
+        "unavailable_sources": [],
     }
 
     # This agent has no tools, so it cannot repeatedly call CRM or usage.
