@@ -376,9 +376,38 @@ if bundle and bundle.get("account_id") == selected_id:
             else:
                 st.warning(usage.get("message") or "Usage unavailable")
 
+        s_left, s_right = st.columns(2)
+        with s_left:
+            st.subheader("Support")
+            support = bundle.get("support") or {}
+            if support.get("ok"):
+                st.write(support.get("account") or {})
+                for signal in bundle.get("support_signals") or []:
+                    st.warning(signal)
+            else:
+                st.warning(support.get("message") or "Support unavailable")
+        with s_right:
+            st.subheader("Communication")
+            communication = bundle.get("communication") or {}
+            if communication.get("ok"):
+                st.write(communication.get("account") or {})
+                for signal in bundle.get("communication_signals") or []:
+                    st.info(signal)
+            else:
+                st.warning(
+                    communication.get("message") or "Communication unavailable"
+                )
+
         if show_raw:
             with st.expander("Raw tool payloads"):
-                st.json({"crm": crm, "usage": usage})
+                st.json(
+                    {
+                        "crm": crm,
+                        "usage": usage,
+                        "support": bundle.get("support"),
+                        "communication": bundle.get("communication"),
+                    }
+                )
 
     with tab_actions:
         st.subheader("CSM checklist")
@@ -389,7 +418,7 @@ if bundle and bundle.get("account_id") == selected_id:
             f"Review renewal path before {renewal}",
             "Validate usage signal with product analytics (mock today)",
             "Escalate TCK billing/access requests to Billing (no auto-refund)",
-            "Check communications manually (not connected)",
+            "Review communication sentiment / follow-up request",
             "Human approval before any customer outreach",
         ]
         for item in checks:
@@ -404,8 +433,8 @@ elif not should_run:
 provider = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
 if provider == "ollama":
     st.markdown(
-        f'<p class="ap-footer">Optional local model: '
-        f'{os.getenv("OLLAMA_MODEL", "qwen2.5:3b")} · '
-        "standard reviews do not require the LLM</p>",
+        f'<p class="ap-footer">Official reviews use deterministic rules · '
+        f'optional LLM demo: {os.getenv("OLLAMA_MODEL", "qwen2.5:3b")} '
+        "(REPORT_MODE=ollama)</p>",
         unsafe_allow_html=True,
     )

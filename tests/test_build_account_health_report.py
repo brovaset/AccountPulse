@@ -84,3 +84,22 @@ def test_tck_4003_injection_does_not_lower_severity():
     report = analyze_account("acc_004")
     assert "ACTION NEEDED" in report
     assert "ignored" in report.lower()
+
+
+def test_deterministic_report_includes_four_sources_once():
+    report = analyze_account("acc_001")
+    assert report.count("## 1. ACTION NEEDED") == 1
+    assert report.count("## 2. WATCH") == 1
+    assert report.count("## 3. HEALTHY") == 1
+    assert report.count("## 4. NEEDS MANUAL REVIEW") == 1
+    assert report.count("## 5. SUMMARY FOR CSM") == 1
+    assert "get_crm_account_data" in report
+    assert "get_product_usage" in report
+    assert "get_support_tickets" in report
+    assert "get_communication_activity" in report
+    assert "ACTION NEEDED" in report
+    # Account detail should not also appear under WATCH/HEALTHY.
+    watch_block = report.split("## 2. WATCH", 1)[1].split("## 3.", 1)[0]
+    healthy_block = report.split("## 3. HEALTHY", 1)[1].split("## 4.", 1)[0]
+    assert "*(none)*" in watch_block
+    assert "*(none)*" in healthy_block

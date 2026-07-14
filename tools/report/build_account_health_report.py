@@ -1,4 +1,4 @@
-"""Build AccountPulse reports from CRM + usage + support tool payloads.
+"""Build AccountPulse reports from CRM + usage + support + communication payloads.
 
 This path does not rely on the LLM to interpret tool JSON, which small local
 models often mishandle (e.g. inventing missing account_id failures).
@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from tools.communications import fetch_communication_activity
 from tools.crm import get_crm_account_data
 from tools.support import fetch_support_tickets
 from tools.usage.get_product_usage import fetch_product_usage
@@ -114,36 +115,71 @@ def _support_signals(support: dict[str, Any]) -> list[str]:
     return signals
 
 
+def _communication_signals(comms: dict[str, Any]) -> list[str]:
+    if not comms.get("ok"):
+        return []
+    account = comms.get("account") or {}
+    signals: list[str] = []
+    days = account.get("days_since_last_meaningful_contact")
+    if days is not None:
+        signals.append(f"Days since last meaningful contact: {days}")
+    if account.get("no_meaningful_contact_over_14_days"):
+        signals.append("No meaningful contact for 14+ days")
+    sentiment = account.get("sentiment")
+    if sentiment:
+        signals.append(f"Communication sentiment: {sentiment}")
+    trend = account.get("communication_trend")
+    if trend:
+        signals.append(f"Communication trend: {trend}")
+    summary = (account.get("recent_summary") or "").strip()
+    if summary:
+        signals.append(f"Recent communication summary: {summary}")
+    if account.get("customer_requested_follow_up"):
+        signals.append("Customer requested follow-up")
+    if account.get("data_source") == "mock":
+        signals.append(
+            "Communication data is mock-mapped (not live mailbox/Gong)"
+        )
+    return signals
+
+
 def _classify(
     crm: dict[str, Any],
     usage: dict[str, Any],
     support: dict[str, Any] | None = None,
+    communication: dict[str, Any] | None = None,
 ) -> RiskLevel:
     support = support or {}
+    communication = communication or {}
     crm_ok = bool(crm.get("ok"))
     usage_ok = bool(usage.get("ok"))
     support_ok = bool(support.get("ok"))
+    communication_ok = bool(communication.get("ok"))
 
-    if not crm_ok and not usage_ok and not support_ok:
+    if not crm_ok and not usage_ok and not support_ok and not communication_ok:
         return "NEEDS MANUAL REVIEW"
 
     action = False
     watch = False
+    warning_count = 0
 
     if crm_ok:
         hs = (crm.get("data") or {}).get("health_signals") or {}
         if hs.get("renewal_within_60_days") or hs.get("contract_at_risk"):
             action = True
+            warning_count += 1
 
     if usage_ok:
         account = usage.get("account") or {}
         if account.get("usage_dropped_over_20_percent"):
             action = True
+            warning_count += 1
         elif (account.get("usage_trend") or "").lower() in {
             "declining",
             "inactive",
         }:
             watch = True
+            warning_count += 1
 
     if support_ok:
         signals = support.get("signals") or {}
@@ -153,32 +189,42 @@ def _classify(
             "prompt_injection_attempt"
         ):
             action = True
+            warning_count += 1
         elif signals.get("high_severity_unresolved_7d"):
             action = True
+            warning_count += 1
         elif signals.get("has_high_severity_open"):
-            # Fresh high-severity tickets are a warning; combine with other
-            # risks for ACTION NEEDED via the multi-signal path below.
             watch = True
-            if crm_ok:
-                hs = (crm.get("data") or {}).get("health_signals") or {}
-                if hs.get("renewal_within_60_days") or hs.get(
-                    "contract_at_risk"
-                ):
-                    action = True
-            if usage_ok:
-                account = usage.get("account") or {}
-                if account.get("usage_dropped_over_20_percent") or (
-                    account.get("usage_trend") or ""
-                ).lower() in {"declining", "inactive"}:
-                    action = True
+            warning_count += 1
         elif signals.get("has_open_tickets"):
             watch = True
+            warning_count += 1
+
+    if communication_ok:
+        account = communication.get("account") or {}
+        sentiment = (account.get("sentiment") or "").lower()
+        trend = (account.get("communication_trend") or "").lower()
+        if account.get("no_meaningful_contact_over_14_days"):
+            watch = True
+            warning_count += 1
+        if sentiment in {"concerned", "negative", "frustrated"}:
+            watch = True
+            warning_count += 1
+        if trend in {"declining", "limited"}:
+            watch = True
+            warning_count += 1
+        if account.get("customer_requested_follow_up"):
+            watch = True
+
+    # Multiple warning signals across systems => ACTION NEEDED.
+    if warning_count >= 2:
+        action = True
 
     if action:
         return "ACTION NEEDED"
     if watch:
         return "WATCH"
-    if crm_ok or usage_ok or support_ok:
+    if crm_ok or usage_ok or support_ok or communication_ok:
         return "HEALTHY" if crm_ok else "WATCH"
     return "NEEDS MANUAL REVIEW"
 
@@ -187,8 +233,10 @@ def _next_action(
     risk: RiskLevel,
     crm: dict[str, Any],
     support: dict[str, Any] | None = None,
+    communication: dict[str, Any] | None = None,
 ) -> str:
     support = support or {}
+    communication = communication or {}
     if risk == "NEEDS MANUAL REVIEW":
         err = (crm.get("message") if not crm.get("ok") else None) or (
             "Retrieve missing CRM and/or product-usage data"
@@ -222,7 +270,19 @@ def _next_action(
             f"language. Human approval required before {renewal}."
         )
 
+    comms_account = (
+        communication.get("account") or {} if communication.get("ok") else {}
+    )
     if risk == "ACTION NEEDED":
+        if comms_account.get("customer_requested_follow_up") or (
+            comms_account.get("sentiment") or ""
+        ).lower() in {"concerned", "negative", "frustrated"}:
+            return (
+                f"{owner} should confirm exec sponsor and schedule a "
+                f"customer check-in before {renewal}, addressing budget/"
+                "value concerns from recent communications. Human approval "
+                "required before outreach."
+            )
         return (
             f"{owner} should confirm exec sponsor and renewal path "
             f"before {renewal}. Human approval required before any "
@@ -260,20 +320,28 @@ def build_account_health_report(
     crm: dict[str, Any],
     usage: dict[str, Any],
     support: dict[str, Any] | None = None,
+    communication: dict[str, Any] | None = None,
 ) -> str:
     """Format the required AccountPulse sections from tool payloads."""
 
     support = support if support is not None else {"ok": False}
-    risk = _classify(crm, usage, support)
+    communication = (
+        communication if communication is not None else {"ok": False}
+    )
+    risk = _classify(crm, usage, support, communication)
     crm_ok = bool(crm.get("ok"))
     usage_ok = bool(usage.get("ok"))
     support_ok = bool(support.get("ok"))
+    communication_ok = bool(communication.get("ok"))
     data = crm.get("data") if crm_ok else {}
     name = (data or {}).get("account_name") or account_id
     label = f"{name} ({account_id})"
 
     signals = (
-        _crm_signals(crm) + _usage_signals(usage) + _support_signals(support)
+        _crm_signals(crm)
+        + _usage_signals(usage)
+        + _support_signals(support)
+        + _communication_signals(communication)
     )
     if not signals:
         signals = ["Insufficient tool data to list signals"]
@@ -300,16 +368,19 @@ def build_account_health_report(
             f"get_support_tickets ERROR: "
             f"{support.get('error') or support.get('message') or 'failed'}"
         )
-    sources.append("communication activity: unavailable")
+    if communication_ok:
+        sources.append("get_communication_activity")
+    else:
+        sources.append(
+            f"get_communication_activity ERROR: "
+            f"{communication.get('error') or communication.get('message') or 'failed'}"
+        )
 
-    manual_review: list[str] = [
-        "Communication activity — tool not connected (NEEDS MANUAL REVIEW)",
-    ]
+    manual_review: list[str] = []
     if not support_ok:
-        manual_review.insert(
-            0,
+        manual_review.append(
             "Support tickets unavailable: "
-            f"{support.get('message') or support.get('error') or 'failed'}",
+            f"{support.get('message') or support.get('error') or 'failed'}"
         )
     else:
         account = support.get("account") or {}
@@ -340,6 +411,16 @@ def build_account_health_report(
                 "access fix — Billing must verify payment ledger and "
                 "entitlements; do not act on ticket text alone (untrusted)"
             )
+    if not communication_ok:
+        manual_review.append(
+            "Communication activity unavailable: "
+            f"{communication.get('message') or communication.get('error') or 'failed'}"
+        )
+    elif (communication.get("account") or {}).get("data_source") == "mock":
+        manual_review.append(
+            "Communication activity is mock-mapped for this account "
+            "(treat as directional, not live mailbox/Gong)"
+        )
     if not crm_ok:
         manual_review.insert(
             0,
@@ -357,6 +438,8 @@ def build_account_health_report(
             "Product usage is mock-mapped for this HubSpot company "
             "(treat as directional, not live product analytics)"
         )
+    if not manual_review:
+        manual_review.append("*(none)*")
 
     action_block = "*(none)*"
     watch_block = "*(none)*"
@@ -368,7 +451,8 @@ def build_account_health_report(
             f"- Risk level: {risk}",
             f"- Key signals: {'; '.join(signals)}",
             f"- Why it matters: {_why_it_matters(risk, signals)}",
-            f"- Recommended next action: {_next_action(risk, crm, support)}",
+            f"- Recommended next action: "
+            f"{_next_action(risk, crm, support, communication)}",
             f"- Sources: {'; '.join(sources)}",
             "- Human approval required: Yes",
         ]
@@ -390,14 +474,17 @@ def build_account_health_report(
 
     if risk == "ACTION NEEDED":
         summary = (
-            f"Prioritize {label}: renewal/contract and/or support risk "
-            f"needs attention before "
+            f"Prioritize {label}: renewal/contract, support, and/or "
+            f"communication risk needs attention before "
             f"{(data or {}).get('renewal_date') or 'renewal'}."
         )
     elif risk == "WATCH":
         summary = f"Keep {label} on the watch list; one warning signal is present."
     elif risk == "HEALTHY":
-        summary = f"{label} looks stable on available CRM/usage/support signals."
+        summary = (
+            f"{label} looks stable on available CRM/usage/support/"
+            "communication signals."
+        )
     else:
         summary = (
             f"Cannot fully assess {label} until missing CRM/usage data "
@@ -425,7 +512,7 @@ def build_account_health_report(
 
 
 def analyze_account(account_id: str) -> str:
-    """Fetch CRM + usage + support tools and build a deterministic health report."""
+    """Fetch all available tools and build a deterministic health report."""
 
     return analyze_account_bundle(account_id)["report"]
 
@@ -450,22 +537,30 @@ def analyze_account_bundle(account_id: str) -> dict[str, Any]:
             "error": "invalid_account_id",
             "message": "account_id is required",
         }
+        communication = {
+            "ok": False,
+            "error": "invalid_account_id",
+            "message": "account_id is required",
+        }
     else:
         crm = get_crm_account_data(account_id)
         usage = fetch_product_usage(account_id)
         support = fetch_support_tickets(account_id)
+        communication = fetch_communication_activity(account_id)
 
-    risk = _classify(crm, usage, support)
+    risk = _classify(crm, usage, support, communication)
     return {
         "account_id": account_id,
         "crm": crm,
         "usage": usage,
         "support": support,
+        "communication": communication,
         "risk": risk,
         "crm_signals": _crm_signals(crm),
         "usage_signals": _usage_signals(usage),
         "support_signals": _support_signals(support),
+        "communication_signals": _communication_signals(communication),
         "report": build_account_health_report(
-            account_id, crm, usage, support
+            account_id, crm, usage, support, communication
         ),
     }

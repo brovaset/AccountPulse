@@ -394,15 +394,9 @@ def create_report_agent() -> Agent:
     )
 
 
-def run() -> None:
-    """Run a deterministic AccountPulse analysis."""
+def run_ollama_report(account_id: str) -> None:
+    """Optional LLM report path (can mis-bucket with small local models)."""
 
-    account_id = (
-        os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip()
-        or "acc_001"
-    )
-
-    # Retrieve each currently available source exactly once.
     crm_result = fetch_crm_account_data(account_id)
     usage_result = fetch_product_usage(account_id)
     support_result = fetch_support_tickets(account_id)
@@ -417,9 +411,7 @@ def run() -> None:
         "unavailable_sources": [],
     }
 
-    # This agent has no tools, so it cannot repeatedly call CRM or usage.
     report_agent = create_report_agent()
-
     response = report_agent(
         "Produce the final AccountPulse account-health report using only "
         "the evidence below. Do not call tools, do not ask questions, and "
@@ -427,8 +419,35 @@ def run() -> None:
         "Return each required section exactly once.\n\n"
         f"EVIDENCE:\n{json.dumps(evidence, indent=2, default=str)}"
     )
-
     print(response)
+
+
+def run() -> None:
+    """Run AccountPulse analysis for the configured account.
+
+    Official demo path: deterministic analyze_account (stable sections).
+    Optional: REPORT_MODE=ollama to demonstrate the LLM report flow.
+    """
+
+    account_id = (
+        os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip()
+        or "acc_001"
+    )
+    report_mode = os.getenv("REPORT_MODE", "deterministic").strip().lower()
+
+    if report_mode in {"ollama", "llm", "report_agent"}:
+        print(
+            f"[AccountPulse] Optional Ollama report mode for {account_id}. "
+            "Official demos should use REPORT_MODE=deterministic."
+        )
+        run_ollama_report(account_id)
+        return
+
+    print(
+        f"[AccountPulse] Deterministic report for {account_id} "
+        "(official demo path). Set REPORT_MODE=ollama for optional LLM demo."
+    )
+    print(analyze_account(account_id))
 
 
 if __name__ == "__main__":
