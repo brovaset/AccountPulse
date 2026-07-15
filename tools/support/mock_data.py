@@ -82,4 +82,22 @@ MOCK_SUPPORT_TICKETS = {
         "recent_ticket_bodies": [],
         "data_source": "mock",
     },
+    "acc_006": {
+        "account_id": "acc_006",
+        "open_ticket_count": 1,
+        "oldest_ticket_age_days": 5,
+        "highest_severity": "medium",
+        "unresolved_high_severity_over_7_days": False,
+        "ticket_trend": "stable",
+        "recent_ticket_subjects": [
+            "TCK-6001: Slow response times on bulk export feature",
+        ],
+        "recent_ticket_bodies": [
+            (
+                "Bulk export jobs keep timing out and support has been slow "
+                "to respond despite how heavily we use the product."
+            ),
+        ],
+        "data_source": "mock",
+    },
 }

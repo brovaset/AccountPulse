@@ -47,4 +47,14 @@ MOCK_PRODUCT_USAGE = {
         "usage_dropped_over_20_percent": False,
         "data_source": "mock",
     },
+    "acc_006": {
+        "account_id": "acc_006",
+        "last_active_date": "2026-07-12",
+        "login_frequency_30d": 36,
+        "usage_trend": "stable",
+        "feature_adoption_percent": 87,
+        "usage_decline_percent": 0,
+        "usage_dropped_over_20_percent": False,
+        "data_source": "mock",
+    },
 }

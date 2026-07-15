@@ -128,6 +128,8 @@ def _communication_signals(comms: dict[str, Any]) -> list[str]:
     sentiment = account.get("sentiment")
     if sentiment:
         signals.append(f"Communication sentiment: {sentiment}")
+    if account.get("nps_score") is not None:
+        signals.append(f"NPS score: {account.get('nps_score')}")
     trend = account.get("communication_trend")
     if trend:
         signals.append(f"Communication trend: {trend}")
@@ -197,17 +199,26 @@ def _classify(
             watch = True
             warning_count += 1
         elif signals.get("has_open_tickets"):
+            # Non-high open tickets are a WATCH signal, but do not alone
+            # push multi-signal ACTION NEEDED (keeps edge cases like
+            # strong usage + frustrated champion + medium ticket as WATCH).
             watch = True
-            warning_count += 1
 
     if communication_ok:
         account = communication.get("account") or {}
         sentiment = (account.get("sentiment") or "").lower()
         trend = (account.get("communication_trend") or "").lower()
+        nps = account.get("nps_score")
+        relationship_risk = sentiment in {
+            "concerned",
+            "negative",
+            "frustrated",
+        } or (nps is not None and nps < 30)
         if account.get("no_meaningful_contact_over_14_days"):
             watch = True
             warning_count += 1
-        if sentiment in {"concerned", "negative", "frustrated"}:
+        if relationship_risk:
+            # Frustrated/low NPS is one relationship warning (not two).
             watch = True
             warning_count += 1
         if trend in {"declining", "limited"}:
@@ -289,6 +300,20 @@ def _next_action(
             "customer-facing outreach."
         )
     if risk == "WATCH":
+        comms_account = (
+            communication.get("account") or {} if communication.get("ok") else {}
+        )
+        sentiment = (comms_account.get("sentiment") or "").lower()
+        nps = comms_account.get("nps_score")
+        if sentiment in {"frustrated", "concerned", "negative"} or (
+            nps is not None and nps < 30
+        ):
+            return (
+                f"{owner} should follow up on champion frustration / low NPS "
+                "despite strong product usage — confirm support experience "
+                "and relationship health. Human approval required before "
+                "outreach."
+            )
         return (
             f"{owner} should monitor usage/adoption over the next 2 weeks "
             "and schedule a check-in if decline continues."

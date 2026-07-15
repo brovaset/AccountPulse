@@ -103,3 +103,23 @@ def test_deterministic_report_includes_four_sources_once():
     healthy_block = report.split("## 3. HEALTHY", 1)[1].split("## 4.", 1)[0]
     assert "*(none)*" in watch_block
     assert "*(none)*" in healthy_block
+
+
+def test_case2_edge_strong_usage_frustrated_champion_is_watch():
+    """PRD edge: strong usage + frustrated champion/low NPS → WATCH, not HEALTHY."""
+
+    report = analyze_account("acc_006")
+    assert "Meridian Analytics" in report
+    assert "WATCH" in report
+    assert "## 2. WATCH" in report
+    watch_block = report.split("## 2. WATCH", 1)[1].split("## 3.", 1)[0]
+    action_block = report.split("## 1. ACTION NEEDED", 1)[1].split("## 2.", 1)[0]
+    healthy_block = report.split("## 3. HEALTHY", 1)[1].split("## 4.", 1)[0]
+    assert "*(none)*" in action_block
+    assert "Meridian Analytics" in watch_block
+    assert "*(none)*" in healthy_block
+    assert "frustrated" in report.lower() or "nps" in report.lower()
+    assert "87%" in report or "adoption: 87" in report.lower()
+    assert "TCK-6001" in report
+    assert "get_communication_activity" in report
+    assert "Human approval" in report

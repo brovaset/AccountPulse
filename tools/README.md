@@ -101,10 +101,11 @@ To connect **real** company records (Bath field mapping + UI setup + verify scri
 | ID | Scenario |
 |----|----------|
 | `acc_001` | Golden at-risk (renewal ~45 days) |
-| `acc_002` | Healthy (renewal far out) |
+| `acc_002` | Declining usage + high-sev tickets |
 | `acc_003` | Expiring contract |
 | `acc_004` | Prompt-injection CRM note |
 | `acc_005` | Pending contract, empty notes |
+| `acc_006` | Edge: strong usage + frustrated champion / low NPS (WATCH) |
 
 ### Agent wiring (Bath)
 

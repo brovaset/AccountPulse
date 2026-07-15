@@ -49,4 +49,22 @@ MOCK_COMMUNICATION_ACTIVITY = {
         "customer_requested_follow_up": False,
         "data_source": "mock",
     },
+    "acc_006": {
+        "account_id": "acc_006",
+        "last_meaningful_contact_date": "2026-07-05",
+        "days_since_last_meaningful_contact": 8,
+        "recent_email_count_30d": 5,
+        "recent_meeting_count_30d": 1,
+        "sentiment": "frustrated",
+        "sentiment_score": -0.55,
+        "nps_score": 22,
+        "communication_trend": "active",
+        "recent_summary": (
+            "Champion is frustrated with support responsiveness despite "
+            "heavy product usage. Latest NPS score is 22."
+        ),
+        "no_meaningful_contact_over_14_days": False,
+        "customer_requested_follow_up": True,
+        "data_source": "mock",
+    },
 }

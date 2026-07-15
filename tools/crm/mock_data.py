@@ -78,6 +78,20 @@ MOCK_ACCOUNTS: dict[str, MockAccountRecord] = {
         "account_notes": "",
         "last_task_date": None,
     },
+    "acc_006": {
+        "account_id": "acc_006",
+        "account_name": "Meridian Analytics",
+        "account_owner": "Sam Ortiz",
+        "renewal_date": _renewal(180),
+        "contract_status": "Active",
+        "plan_tier": "Growth",
+        "customer_status": "customer",
+        "account_notes": (
+            "Champion mentioned in last call they're frustrated with "
+            "support responsiveness despite heavy product usage. NPS 22."
+        ),
+        "last_task_date": (FIXTURE_AS_OF - timedelta(days=8)).isoformat(),
+    },
 }
 
 
