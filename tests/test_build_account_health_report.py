@@ -64,6 +64,8 @@ def test_analyze_account_mock_acc_001():
     assert "acc_001" in report
     assert "TCK-4001" in report
     assert "Human approval" in report
+    assert "Billing/Finance verify" in report
+    assert "exec sponsor" in report.lower() or "check-in" in report.lower()
 
 
 def test_tck_4001_is_untrusted_and_not_auto_refunded():

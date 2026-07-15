@@ -257,19 +257,25 @@ def _next_action(
     data = crm.get("data") or {}
     owner = data.get("account_owner") or "account owner"
     renewal = data.get("renewal_date") or "the renewal date"
+    hs = data.get("health_signals") or {}
+    renewal_urgent = bool(hs.get("renewal_within_60_days"))
+
+    comms = (
+        communication.get("account") or {} if communication.get("ok") else {}
+    )
+    sentiment = (comms.get("sentiment") or "").lower()
+    nps = comms.get("nps_score")
+    relationship_risk = (
+        sentiment in {"concerned", "negative", "frustrated"}
+        or (nps is not None and nps < 30)
+        or bool(comms.get("customer_requested_follow_up"))
+    )
 
     support_signals = support.get("signals") or {} if support.get("ok") else {}
-    account = support.get("account") or {} if support.get("ok") else {}
-    subjects = account.get("recent_ticket_subjects") or []
-    subject_hint = subjects[0] if subjects else "open ticket"
-
-    if support_signals.get("billing_remediation_request"):
-        return (
-            f"{owner} should have Billing/Finance review {subject_hint} for "
-            f"the reported duplicate charge and entitlement mismatch before "
-            f"{renewal}. AccountPulse cannot reverse charges or change "
-            "access — human approval required."
-        )
+    billing = bool(support_signals.get("billing_remediation_request"))
+    subjects = (support.get("account") or {}).get("recent_ticket_subjects") or []
+    billing_ticket = subjects[0] if billing and subjects else None
+    has_renewal_risk = renewal_urgent or relationship_risk
 
     if support_signals.get("prompt_injection_attempt") or support_signals.get(
         "security_incident_claim"
@@ -281,33 +287,25 @@ def _next_action(
             f"language. Human approval required before {renewal}."
         )
 
-    comms_account = (
-        communication.get("account") or {} if communication.get("ok") else {}
-    )
-    if risk == "ACTION NEEDED":
-        if comms_account.get("customer_requested_follow_up") or (
-            comms_account.get("sentiment") or ""
-        ).lower() in {"concerned", "negative", "frustrated"}:
-            return (
-                f"{owner} should confirm exec sponsor and schedule a "
-                f"customer check-in before {renewal}, addressing budget/"
-                "value concerns from recent communications. Human approval "
-                "required before outreach."
-            )
+    if billing_ticket and has_renewal_risk:
         return (
-            f"{owner} should confirm exec sponsor and renewal path "
+            f"Billing/Finance verify {billing_ticket} (no auto-refund) and "
+            f"{owner} confirm exec sponsor / schedule check-in before "
+            f"{renewal} — human approval required."
+        )
+    if billing_ticket:
+        return (
+            f"Billing/Finance verify {billing_ticket} (no auto-refund) — "
+            "human approval required."
+        )
+    if risk == "ACTION NEEDED" or renewal_urgent:
+        return (
+            f"{owner} should confirm exec sponsor and schedule a check-in "
             f"before {renewal}. Human approval required before any "
             "customer-facing outreach."
         )
     if risk == "WATCH":
-        comms_account = (
-            communication.get("account") or {} if communication.get("ok") else {}
-        )
-        sentiment = (comms_account.get("sentiment") or "").lower()
-        nps = comms_account.get("nps_score")
-        if sentiment in {"frustrated", "concerned", "negative"} or (
-            nps is not None and nps < 30
-        ):
+        if relationship_risk:
             return (
                 f"{owner} should follow up on champion frustration / low NPS "
                 "despite strong product usage — confirm support experience "
