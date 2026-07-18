@@ -1,13 +1,16 @@
 """Display date helpers for AccountPulse reports and UI.
 
 Machine payloads keep ISO ``YYYY-MM-DD``. Human-facing text uses
-``Mon DD, YYYY`` (e.g. ``Aug 25, 2026``).
+``Mon D, YYYY`` (e.g. ``Aug 25, 2026``).
 """
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from typing import Any
+
+_ISO_DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 
 
 def parse_iso_date(value: Any) -> date | None:
@@ -49,3 +52,18 @@ def format_display_date(
             return fallback
         return str(value).strip()
     return f"{parsed.strftime('%b')} {parsed.day}, {parsed.year}"
+
+
+def format_dates_in_text(text: str) -> str:
+    """Replace ISO ``YYYY-MM-DD`` tokens in prose with display dates.
+
+    Used by the Streamlit UI so cached reports update without a re-run.
+    """
+
+    if not text:
+        return text
+
+    def _replace(match: re.Match[str]) -> str:
+        return format_display_date(match.group(1), fallback=match.group(1))
+
+    return _ISO_DATE_RE.sub(_replace, text)

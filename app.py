@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from tools.crm.hubspot_client import hubspot_enabled
 from tools.crm.mock_data import MOCK_ACCOUNTS, list_mock_account_ids
-from tools.dates import format_display_date
+from tools.dates import format_dates_in_text, format_display_date
 from tools.report import analyze_account_bundle, analyze_portfolio_bundle
 
 # Override shell exports (e.g. CRM_PROVIDER=mock) so live connector maps from .env apply.
@@ -701,6 +701,9 @@ if should_run:
 
 portfolio = st.session_state.get("portfolio")
 if portfolio:
+    # Rewrite cached ISO dates so prior runs pick up display formatting.
+    portfolio["report"] = format_dates_in_text(portfolio.get("report") or "")
+    st.session_state["portfolio"] = portfolio
     counts = portfolio.get("counts") or {}
     st.markdown("**Morning briefing**")
     st.caption("Ranked for CSM triage — act only after human approval.")
@@ -724,6 +727,8 @@ if portfolio:
 
 bundle = st.session_state.get("bundle")
 if bundle and bundle.get("account_id") == selected_id:
+    bundle["report"] = format_dates_in_text(bundle.get("report") or "")
+    st.session_state["bundle"] = bundle
     risk = bundle["risk"]
     crm = bundle["crm"]
     usage = bundle["usage"]
