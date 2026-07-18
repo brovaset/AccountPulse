@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import date, datetime
 
@@ -21,6 +22,13 @@ from tools.crm.models import (
 )
 
 AT_RISK_STATUSES = frozenset({"Expiring", "Churned", "Pending"})
+
+# Mock/demo ids → live HubSpot company ids for joint demos.
+DEFAULT_HUBSPOT_ACCOUNT_MAP = {
+    "acc_001": "333055649511",  # Northwind Analytics
+    "acc_002": "332906103502",  # Brightleaf Retail
+    "acc_003": "333057467115",  # Harbor Logistics
+}
 
 
 def _parse_iso_date(value: str) -> date:
@@ -65,6 +73,24 @@ def _load_mock_record(account_id: str) -> MockAccountRecord | None:
     return MOCK_ACCOUNTS.get(account_id)
 
 
+def _hubspot_account_map() -> dict[str, str]:
+    raw = os.getenv("HUBSPOT_ACCOUNT_ID_MAP", "").strip()
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return {str(k): str(v) for k, v in parsed.items()}
+        except json.JSONDecodeError:
+            pass
+    return dict(DEFAULT_HUBSPOT_ACCOUNT_MAP)
+
+
+def _resolve_hubspot_id(account_id: str) -> str:
+    """Map mock demo ids to HubSpot company ids when configured."""
+
+    return _hubspot_account_map().get(account_id, account_id)
+
+
 def get_crm_account_data(
     account_id: str,
     *,
@@ -76,6 +102,9 @@ def get_crm_account_data(
     Uses HubSpot when ``HUBSPOT_ACCESS_TOKEN`` is set (or ``CRM_PROVIDER=hubspot``).
     Otherwise falls back to local mock fixtures.
     Set CRM_FORCE_ERROR=1 (or pass force_error=True) to simulate outages.
+
+    When HubSpot is enabled, mock ids like ``acc_001`` are resolved through
+    ``HUBSPOT_ACCOUNT_ID_MAP`` (defaults map Northwind → ``333055649511``).
     """
     account_id = (account_id or "").strip()
     if not account_id:
@@ -95,8 +124,9 @@ def get_crm_account_data(
 
     try:
         if hubspot_enabled():
+            hubspot_id = _resolve_hubspot_id(account_id)
             try:
-                record = fetch_hubspot_account(account_id)
+                record = fetch_hubspot_account(hubspot_id)
             except HubSpotClientError as exc:
                 # Keep mock fixtures usable in the UI while HubSpot is configured.
                 mock_record = _load_mock_record(account_id)

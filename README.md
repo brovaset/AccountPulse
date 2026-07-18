@@ -42,6 +42,10 @@ cp .env.example .env   # add HubSpot token only if using live CRM
 # Recommended mock demo (Northwind golden account)
 CRM_PROVIDER=mock python -c "from tools.report import analyze_account; print(analyze_account('acc_001'))"
 
+# Joint live demo (HubSpot CRM + Zendesk + PostHog; Gmail when configured)
+# Uses company id 333055649511, or acc_001 via HUBSPOT_ACCOUNT_ID_MAP
+python -c "from dotenv import load_dotenv; load_dotenv(); from tools.report import analyze_account; print(analyze_account('333055649511'))"
+
 # Edge case: strong usage + frustrated champion → WATCH
 CRM_PROVIDER=mock python -c "from tools.report import analyze_account; print(analyze_account('acc_006'))"
 

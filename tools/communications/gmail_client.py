@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -12,8 +15,8 @@ from typing import Any
 from tools._http import HttpClientError, request_json
 
 DEFAULT_QUERY_MAP = {
-    "acc_001": "northwind",
-    "333055649511": "northwind",
+    "acc_001": "northwind OR budget OR renewal",
+    "333055649511": "northwind OR budget OR renewal",
     "acc_002": "brightleaf",
     "332906103502": "brightleaf",
     "acc_003": "harbor",
@@ -33,7 +36,10 @@ class GmailClientError(Exception):
 
 def gmail_enabled() -> bool:
     provider = os.getenv("COMMUNICATION_PROVIDER", "auto").strip().lower()
-    has_token = bool(os.getenv("GMAIL_ACCESS_TOKEN", "").strip())
+    has_token = bool(
+        os.getenv("GMAIL_ACCESS_TOKEN", "").strip()
+        or os.getenv("GMAIL_REFRESH_TOKEN", "").strip()
+    )
     if provider == "mock":
         return False
     if provider == "gmail":
@@ -53,14 +59,54 @@ def _query_map() -> dict[str, str]:
     return dict(DEFAULT_QUERY_MAP)
 
 
-def _token() -> str:
-    token = os.getenv("GMAIL_ACCESS_TOKEN", "").strip()
-    if not token:
+def _refresh_access_token() -> str:
+    refresh = os.getenv("GMAIL_REFRESH_TOKEN", "").strip()
+    client_id = os.getenv("GMAIL_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GMAIL_CLIENT_SECRET", "").strip()
+    if not (refresh and client_id and client_secret):
         raise GmailClientError(
             "communication_unavailable",
-            "GMAIL_ACCESS_TOKEN is not set",
+            "Gmail token expired/missing; set GMAIL_ACCESS_TOKEN or "
+            "GMAIL_REFRESH_TOKEN + GMAIL_CLIENT_ID/SECRET",
         )
-    return token
+    body = urllib.parse.urlencode(
+        {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh,
+            "grant_type": "refresh_token",
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        "https://oauth2.googleapis.com/token",
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise GmailClientError(
+            "communication_unavailable",
+            f"Gmail token refresh failed: HTTP {exc.code}: {detail[:200]}",
+        ) from exc
+    access = (payload.get("access_token") or "").strip()
+    if not access:
+        raise GmailClientError(
+            "communication_unavailable",
+            "Gmail token refresh returned no access_token",
+        )
+    os.environ["GMAIL_ACCESS_TOKEN"] = access
+    return access
+
+
+def _token() -> str:
+    token = os.getenv("GMAIL_ACCESS_TOKEN", "").strip()
+    if token:
+        return token
+    return _refresh_access_token()
 
 
 def _request(path: str, *, query: dict[str, str] | None = None) -> Any:
@@ -73,6 +119,18 @@ def _request(path: str, *, query: dict[str, str] | None = None) -> Any:
             query=query,
         )
     except HttpClientError as exc:
+        # Retry once after refresh on auth failures.
+        if "401" in exc.message or "403" in exc.message:
+            try:
+                access = _refresh_access_token()
+                return request_json(
+                    "GET",
+                    url,
+                    headers={"Authorization": f"Bearer {access}"},
+                    query=query,
+                )
+            except (HttpClientError, GmailClientError):
+                pass
         code = (
             "account_not_found"
             if exc.code == "account_not_found"

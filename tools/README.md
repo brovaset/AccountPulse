@@ -140,7 +140,7 @@ If `ok` is `False`, mark that account section **NEEDS MANUAL REVIEW** — do not
 |--------|--------------|-------------|
 | Support | `SUPPORT_PROVIDER=auto\|mock\|zendesk` | `ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN` |
 | Usage | `USAGE_PROVIDER=auto\|mock\|posthog\|gainsight` | **PostHog (preferred/free):** `POSTHOG_HOST`, `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY` · optional Gainsight: `GAINSIGHT_BASE_URL`, `GAINSIGHT_ACCESS_KEY` |
-| Communications | `COMMUNICATION_PROVIDER=auto\|mock\|gmail` | `GMAIL_ACCESS_TOKEN` |
+| Communications | `COMMUNICATION_PROVIDER=auto\|mock\|gmail` | `GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` → run `python scripts/gmail_oauth_setup.py` → `GMAIL_ACCESS_TOKEN` / `GMAIL_REFRESH_TOKEN` |
 
 Without credentials (or with `*_PROVIDER=mock`), each tool keeps using local fixtures. Structured `{ok:false}` errors are returned when a live provider is forced and the upstream call fails — the report path marks that source under **NEEDS MANUAL REVIEW**.
 

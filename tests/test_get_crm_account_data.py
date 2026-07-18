@@ -172,3 +172,35 @@ def test_hubspot_not_found_maps_to_tool_error(monkeypatch: pytest.MonkeyPatch):
     assert result["ok"] is False
     assert result["error"] == "account_not_found"
     assert result["message"] == "missing company"
+
+
+def test_hubspot_maps_mock_acc_001_to_northwind_company(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import importlib
+
+    crm_mod = importlib.import_module("tools.crm.get_crm_account_data")
+
+    monkeypatch.setenv("CRM_PROVIDER", "hubspot")
+    monkeypatch.setenv("HUBSPOT_ACCESS_TOKEN", "test-token")
+    seen: list[str] = []
+
+    def fake_fetch(company_id: str):
+        seen.append(company_id)
+        return {
+            "account_id": company_id,
+            "account_name": "Northwind Analytics",
+            "account_owner": "Live Owner",
+            "renewal_date": "2026-08-25",
+            "contract_status": "Active",
+            "plan_tier": "Enterprise",
+            "customer_status": "customer",
+            "account_notes": "Live HubSpot note",
+            "last_task_date": "2026-07-01",
+        }
+
+    monkeypatch.setattr(crm_mod, "fetch_hubspot_account", fake_fetch)
+    result = crm_mod.get_crm_account_data("acc_001", as_of=FIXTURE_AS_OF)
+    assert result["ok"] is True
+    assert seen == ["333055649511"]
+    assert result["data"]["account_name"] == "Northwind Analytics"
