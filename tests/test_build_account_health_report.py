@@ -38,7 +38,7 @@ def test_northwind_like_signals_are_action_needed():
     assert "## 1. ACTION NEEDED" in report
     assert "Northwind Analytics" in report
     assert "budget pressure" in report
-    assert "2026-08-25" in report
+    assert "Aug 25, 2026" in report
     assert "TCK-4001" in report
     assert "missing account" not in report.lower()
     assert "retrieve the missing account data" not in report.lower()

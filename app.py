@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from tools.crm.hubspot_client import hubspot_enabled
 from tools.crm.mock_data import MOCK_ACCOUNTS, list_mock_account_ids
+from tools.dates import format_display_date
 from tools.report import analyze_account_bundle, analyze_portfolio_bundle
 
 # Override shell exports (e.g. CRM_PROVIDER=mock) so live connector maps from .env apply.
@@ -782,7 +783,7 @@ if bundle and bundle.get("account_id") == selected_id:
                     {
                         "account": crm_data.get("account_name"),
                         "owner": crm_data.get("account_owner"),
-                        "renewal": crm_data.get("renewal_date"),
+                        "renewal": format_display_date(crm_data.get("renewal_date")),
                         "contract": crm_data.get("contract_status"),
                         "notes": crm_data.get("account_notes"),
                     }
@@ -794,7 +795,12 @@ if bundle and bundle.get("account_id") == selected_id:
         with right:
             st.subheader("Product usage")
             if usage.get("ok"):
-                st.write(usage_acct)
+                usage_display = dict(usage_acct)
+                if "last_active_date" in usage_display:
+                    usage_display["last_active_date"] = format_display_date(
+                        usage_display.get("last_active_date")
+                    )
+                st.write(usage_display)
                 for signal in bundle["usage_signals"]:
                     st.info(signal)
             else:
@@ -812,7 +818,14 @@ if bundle and bundle.get("account_id") == selected_id:
         with s_right:
             st.subheader("Communication")
             if communication.get("ok"):
-                st.write(communication.get("account") or {})
+                comms_display = dict(communication.get("account") or {})
+                if "last_meaningful_contact_date" in comms_display:
+                    comms_display["last_meaningful_contact_date"] = (
+                        format_display_date(
+                            comms_display.get("last_meaningful_contact_date")
+                        )
+                    )
+                st.write(comms_display)
                 for signal in bundle.get("communication_signals") or []:
                     st.info(signal)
             else:
@@ -835,7 +848,10 @@ if bundle and bundle.get("account_id") == selected_id:
         st.subheader("CSM checklist")
         st.caption("AccountPulse never sends outreach — check items as you approve next steps.")
         owner = crm_data.get("account_owner") or "Account owner"
-        renewal = crm_data.get("renewal_date") or "renewal"
+        renewal = format_display_date(
+            crm_data.get("renewal_date"),
+            fallback="renewal",
+        )
         checks = [
             f"Confirm owner ({owner}) is assigned",
             f"Review renewal path before {renewal}",

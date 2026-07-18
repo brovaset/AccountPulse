@@ -11,6 +11,7 @@ from typing import Any
 from tools.communications import fetch_communication_activity
 from tools.crm import get_crm_account_data
 from tools.crm.mock_data import list_mock_account_ids
+from tools.dates import format_display_date
 from tools.support import fetch_support_tickets
 from tools.usage.get_product_usage import fetch_product_usage
 
@@ -33,7 +34,7 @@ def _crm_signals(crm: dict[str, Any]) -> list[str]:
     if hs.get("renewal_within_60_days"):
         signals.append(
             f"Renewal in {hs.get('days_to_renewal')} days "
-            f"({data.get('renewal_date')})"
+            f"({format_display_date(data.get('renewal_date'))})"
         )
     if hs.get("contract_at_risk"):
         signals.append(f"Contract status is {data.get('contract_status')}")
@@ -272,7 +273,10 @@ def _next_action(
 
     data = crm.get("data") or {}
     owner = data.get("account_owner") or "account owner"
-    renewal = data.get("renewal_date") or "the renewal date"
+    renewal = format_display_date(
+        data.get("renewal_date"),
+        fallback="the renewal date",
+    )
     hs = data.get("health_signals") or {}
     renewal_urgent = bool(hs.get("renewal_within_60_days"))
 
@@ -530,7 +534,7 @@ def build_account_health_report(
         summary = (
             f"Prioritize {label}: renewal/contract, support, and/or "
             f"communication risk needs attention before "
-            f"{(data or {}).get('renewal_date') or 'renewal'}."
+            f"{format_display_date((data or {}).get('renewal_date'), fallback='renewal')}."
         )
     elif risk == "WATCH":
         summary = f"Keep {label} on the watch list; one warning signal is present."
@@ -647,7 +651,7 @@ def _compact_portfolio_entry(bundle: dict[str, Any]) -> str:
     account_id = bundle.get("account_id") or "unknown"
     name = data.get("account_name") or account_id
     owner = data.get("account_owner") or "—"
-    renewal = data.get("renewal_date") or "—"
+    renewal = format_display_date(data.get("renewal_date"))
     risk = bundle.get("risk") or "NEEDS MANUAL REVIEW"
     signals = (
         list(bundle.get("crm_signals") or [])

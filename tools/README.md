@@ -2,6 +2,17 @@
 
 Read-only tools for the AccountPulse Customer Success agent.
 
+## Dates
+
+- **Machine payloads** (CRM / usage / comms tool JSON): keep ISO `YYYY-MM-DD`.
+- **Human-facing text** (reports, Streamlit UI, briefing copy): use `tools.dates.format_display_date` → `Aug 25, 2026`.
+
+```python
+from tools.dates import format_display_date
+
+format_display_date("2026-08-25")  # "Aug 25, 2026"
+```
+
 ## Partner split
 
 | Owner | Branch | Scope |
