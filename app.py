@@ -31,10 +31,10 @@ LIVE_HUBSPOT_ACCOUNTS = {
 HERO_PATH = Path(__file__).resolve().parent / "assets" / "accountpulse-hero.jpg"
 
 RISK_STYLES = {
-    "ACTION NEEDED": ("#fff1f0", "#b42318", "#f97066"),
-    "WATCH": ("#fff8eb", "#b54708", "#fdb022"),
-    "HEALTHY": ("#ecfdf3", "#067647", "#32d583"),
-    "NEEDS MANUAL REVIEW": ("#f2f4f7", "#344054", "#98a2b3"),
+    "ACTION NEEDED": ("#ffe4e1", "#8a1510", "#f04438"),
+    "WATCH": ("#ffefd6", "#93370d", "#f79009"),
+    "HEALTHY": ("#d1fadf", "#05603a", "#12b76a"),
+    "NEEDS MANUAL REVIEW": ("#e8eef3", "#101828", "#667085"),
 }
 
 
@@ -52,23 +52,26 @@ UI_CSS = f"""
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
 
 :root {{
-  --ap-ink: #102832;
-  --ap-muted: #4a6670;
-  --ap-line: rgba(16, 40, 50, 0.14);
-  --ap-accent: #0f9f8c;
+  --ap-ink: #06151c;
+  --ap-muted: #1e3a45;
+  --ap-line: rgba(6, 21, 28, 0.22);
+  --ap-accent: #0a7d6e;
   --ap-glow: rgba(15, 159, 140, 0.28);
-  --ap-surface: rgba(236, 245, 247, 0.78);
+  --ap-surface: rgba(248, 252, 253, 0.94);
   --ap-radius: 18px;
   --ap-hero: url("{hero_uri}");
 }}
 
-html, body, [class*="css"] {{ font-family: "Outfit", sans-serif; }}
+html, body, [class*="css"] {{
+  font-family: "Outfit", sans-serif;
+  color: var(--ap-ink) !important;
+}}
 
 .stApp {{
   background:
-    radial-gradient(1100px 560px at 8% -8%, rgba(30, 110, 130, 0.28), transparent 55%),
-    radial-gradient(900px 520px at 100% 0%, rgba(18, 90, 95, 0.22), transparent 52%),
-    linear-gradient(165deg, #c5d8de 0%, #b7cdd5 40%, #cfdce2 100%);
+    radial-gradient(1100px 560px at 8% -8%, rgba(30, 110, 130, 0.22), transparent 55%),
+    radial-gradient(900px 520px at 100% 0%, rgba(18, 90, 95, 0.18), transparent 52%),
+    linear-gradient(165deg, #d4e4e9 0%, #c8d9e0 40%, #dce7ec 100%);
   color: var(--ap-ink);
 }}
 
@@ -76,8 +79,8 @@ html, body, [class*="css"] {{ font-family: "Outfit", sans-serif; }}
   content: "";
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background-image:
-    linear-gradient(rgba(10, 30, 38, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10, 30, 38, 0.06) 1px, transparent 1px);
+    linear-gradient(rgba(10, 30, 38, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 30, 38, 0.05) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse at center, black 35%, transparent 80%);
   animation: gridDrift 28s linear infinite;
@@ -116,6 +119,75 @@ html, body, [class*="css"] {{ font-family: "Outfit", sans-serif; }}
   position: relative; z-index: 1; max-width: 820px;
   padding-top: 1.2rem; padding-bottom: 3.5rem;
   animation: fadeUp 0.7s ease-out both;
+  color: var(--ap-ink);
+}}
+
+/* Force readable contrast on Streamlit text widgets */
+.stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+.stMarkdown strong, .stMarkdown em, .stMarkdown code,
+[data-testid="stMarkdownContainer"],
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] li,
+[data-testid="stMarkdownContainer"] span,
+[data-testid="stCaption"],
+[data-testid="stCaptionContainer"],
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label,
+label, p, span, li, h1, h2, h3, h4, h5, h6 {{
+  color: var(--ap-ink) !important;
+}}
+[data-testid="stCaption"],
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p {{
+  color: var(--ap-muted) !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
+}}
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p,
+[data-testid="stMetricValue"],
+[data-testid="stMetricDelta"] {{
+  color: var(--ap-ink) !important;
+  opacity: 1 !important;
+}}
+[data-testid="stMetricValue"] {{
+  font-weight: 700 !important;
+}}
+.stTabs [data-baseweb="tab"] {{
+  color: var(--ap-muted) !important;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+}}
+.stTabs [aria-selected="true"] {{
+  color: var(--ap-ink) !important;
+  font-weight: 700 !important;
+}}
+.stCheckbox label span,
+.stCheckbox label p,
+[data-testid="stCheckbox"] label {{
+  color: var(--ap-ink) !important;
+  font-weight: 500 !important;
+}}
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span {{
+  color: var(--ap-ink) !important;
+  font-weight: 500 !important;
+}}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary p,
+[data-testid="stExpander"] summary span {{
+  color: var(--ap-ink) !important;
+  font-weight: 600 !important;
+}}
+[data-testid="stStatusWidget"] p,
+[data-testid="stStatusWidget"] span,
+[data-testid="stStatus"] p {{
+  color: var(--ap-ink) !important;
+}}
+code, pre, .stCode {{
+  color: #041016 !important;
+  background: rgba(255, 255, 255, 0.85) !important;
 }}
 
 .ap-hero-plane {{
@@ -128,14 +200,14 @@ html, body, [class*="css"] {{ font-family: "Outfit", sans-serif; }}
   content: ""; position: absolute; inset: 0;
   background-image: var(--ap-hero); background-size: cover;
   background-position: center right;
-  filter: brightness(0.78) saturate(0.92) contrast(1.05);
+  filter: brightness(0.62) saturate(0.9) contrast(1.08);
   animation: heroKenBurns 22s ease-in-out infinite alternate;
 }}
 .ap-hero-plane::after {{
   content: ""; position: absolute; inset: 0;
   background:
-    linear-gradient(90deg, rgba(140, 170, 180, 0.88) 0%, rgba(150, 178, 188, 0.55) 36%, rgba(160, 185, 195, 0.12) 70%, transparent 100%),
-    linear-gradient(180deg, rgba(120, 150, 160, 0.15) 0%, rgba(150, 175, 185, 0.82) 100%);
+    linear-gradient(90deg, rgba(210, 228, 234, 0.94) 0%, rgba(200, 220, 228, 0.78) 40%, rgba(180, 205, 215, 0.28) 72%, transparent 100%),
+    linear-gradient(180deg, rgba(190, 210, 218, 0.2) 0%, rgba(200, 220, 228, 0.88) 100%);
 }}
 .ap-hero {{
   position: relative; z-index: 1; max-width: 820px; margin: 0 auto;
@@ -144,40 +216,48 @@ html, body, [class*="css"] {{ font-family: "Outfit", sans-serif; }}
 .ap-mark {{
   display: inline-flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 12px; margin-bottom: 0.8rem;
-  color: #05363a; font-weight: 700;
+  color: #031c20; font-weight: 700;
   background: linear-gradient(135deg, #7ef0dc, #5cc8ff);
   animation: pulseRing 2.8s ease-out infinite, softGlow 4s ease-in-out infinite;
 }}
 .ap-brand {{
   font-family: "Syne", sans-serif; font-weight: 800;
   font-size: clamp(2.5rem, 5vw, 3.4rem); letter-spacing: -0.045em;
-  line-height: 0.98; margin: 0 0 0.55rem; color: #0c242c;
+  line-height: 0.98; margin: 0 0 0.55rem; color: #031016 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }}
 .ap-tagline {{
-  font-size: 1.02rem; color: #2f4a54; max-width: 28rem; line-height: 1.45; margin: 0;
+  font-size: 1.08rem; color: #0a1f28 !important; max-width: 28rem;
+  line-height: 1.5; margin: 0; font-weight: 500;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }}
 .ap-meta {{ display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 1rem 0 0; }}
 .ap-chip {{
-  font-size: 0.72rem; letter-spacing: 0.03em; text-transform: uppercase;
-  color: #173e48; background: rgba(220, 236, 240, 0.72);
-  border: 1px solid var(--ap-line); border-radius: 999px; padding: 0.28rem 0.7rem;
+  font-size: 0.74rem; letter-spacing: 0.03em; text-transform: uppercase;
+  font-weight: 700; color: #041820 !important;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(6, 21, 28, 0.28); border-radius: 999px; padding: 0.3rem 0.75rem;
 }}
 .ap-panel {{
   background: var(--ap-surface); border: 1px solid var(--ap-line);
   border-radius: var(--ap-radius); padding: 1rem 1.1rem 0.85rem;
   backdrop-filter: blur(14px); box-shadow: 0 18px 50px rgba(20, 50, 60, 0.12);
   animation: fadeUp 0.85s ease-out both; margin-bottom: 0.9rem;
+  color: var(--ap-ink);
 }}
 .ap-risk {{
   display: inline-flex; align-items: center; gap: 0.45rem;
   border-radius: 999px; padding: 0.4rem 0.85rem; font-weight: 700;
-  font-size: 0.85rem; letter-spacing: 0.02em; animation: riskPulse 2.4s ease-in-out infinite;
+  font-size: 0.88rem; letter-spacing: 0.02em; animation: riskPulse 2.4s ease-in-out infinite;
 }}
 .ap-step {{
-  font-size: 0.86rem; color: #355664; padding: 0.35rem 0;
+  font-size: 0.92rem; color: #0a1f28 !important; font-weight: 500; padding: 0.35rem 0;
 }}
-.ap-step.done {{ color: #067647; font-weight: 600; }}
-.ap-footer {{ margin-top: 1.4rem; font-size: 0.8rem; color: var(--ap-muted); text-align: center; }}
+.ap-step.done {{ color: #05603a !important; font-weight: 700; }}
+.ap-footer {{
+  margin-top: 1.4rem; font-size: 0.85rem; color: var(--ap-muted) !important;
+  font-weight: 500; text-align: center;
+}}
 
 div[data-testid="stHorizontalBlock"] button {{
   border-radius: 14px !important;
@@ -185,12 +265,20 @@ div[data-testid="stHorizontalBlock"] button {{
 .stButton > button {{
   border-radius: 14px !important;
   font-family: "Outfit", sans-serif !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
+  color: #041820 !important;
+  border: 1px solid rgba(6, 21, 28, 0.22) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
 }}
 button[kind="primary"] {{
-  background: linear-gradient(120deg, #6ef0d8 0%, #53c8ff 100%) !important;
-  color: #042f34 !important; border: 0 !important;
+  background: linear-gradient(120deg, #5ce6ce 0%, #3eb8f0 100%) !important;
+  color: #021a1e !important; border: 0 !important;
   box-shadow: 0 10px 28px rgba(0, 170, 180, 0.28);
+  font-weight: 700 !important;
+}}
+button[kind="secondary"] {{
+  color: #041820 !important;
+  background: rgba(255, 255, 255, 0.95) !important;
 }}
 </style>
 """
