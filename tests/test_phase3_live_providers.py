@@ -122,6 +122,24 @@ def test_zendesk_org_id_map_skips_external_id_search(monkeypatch):
     assert calls == ["/organizations/51509923853716/tickets.json"]
 
 
+def test_zendesk_default_org_id_map_for_northwind(monkeypatch):
+    import tools.support.zendesk_client as zd
+
+    monkeypatch.delenv("ZENDESK_ORG_ID_MAP", raising=False)
+    monkeypatch.setenv("ZENDESK_SUBDOMAIN", "example")
+    monkeypatch.setenv("ZENDESK_EMAIL", "agent@example.com")
+    monkeypatch.setenv("ZENDESK_API_TOKEN", "token")
+
+    def fake_request(method: str, path: str, query: dict[str, str] | None = None):
+        assert "organizations/search" not in path
+        assert path == "/organizations/51509923853716/tickets.json"
+        return {"tickets": []}
+
+    monkeypatch.setattr(zd, "_request", fake_request)
+    account = zd.fetch_zendesk_support_account("333055649511")
+    assert account["zendesk_organization_id"] == "51509923853716"
+
+
 def test_posthog_success_path(monkeypatch):
     monkeypatch.setenv("USAGE_PROVIDER", "posthog")
     monkeypatch.setenv("POSTHOG_HOST", "https://us.posthog.com")

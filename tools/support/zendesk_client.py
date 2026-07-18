@@ -19,6 +19,12 @@ DEFAULT_EXTERNAL_ID_MAP = {
     "333057467115": "acc_003",
 }
 
+# Demo orgs often lack external_id — prefer organization id for joint live demos.
+DEFAULT_ORG_ID_MAP = {
+    "acc_001": "51509923853716",  # Pursuit / Northwind demo org
+    "333055649511": "51509923853716",
+}
+
 
 class ZendeskClientError(Exception):
     def __init__(self, code: str, message: str) -> None:
@@ -61,7 +67,7 @@ def _external_id_map() -> dict[str, str]:
 def _org_id_map() -> dict[str, str]:
     """AccountPulse / HubSpot id → Zendesk organization id."""
 
-    return _json_map("ZENDESK_ORG_ID_MAP")
+    return _json_map("ZENDESK_ORG_ID_MAP", DEFAULT_ORG_ID_MAP)
 
 
 def _resolve_organization_id(account_id: str) -> tuple[Any, str | None]:
@@ -81,8 +87,9 @@ def _resolve_organization_id(account_id: str) -> tuple[Any, str | None]:
     if not orgs:
         raise ZendeskClientError(
             "account_not_found",
-            f"No Zendesk organization for account_id={account_id} "
-            f"(org id map miss; external_id={external_id})",
+            f"No Zendesk organization with external_id={external_id}. "
+            f"Set ZENDESK_ORG_ID_MAP for account_id={account_id} "
+            "(demo orgs often have no external_id).",
         )
     return orgs[0].get("id"), external_id
 
