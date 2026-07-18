@@ -1,0 +1,22 @@
+## 1. ACTION NEEDED
+- Account: Northwind Analytics (333055649511)
+- Risk level: ACTION NEEDED
+- Key signals: Renewal in 42 days (2026-08-25); Contract status is Expiring; CRM notes: Plan: Enterprise. Customer mentioned budget pressure ahead of renewal.; Owner: Adedoyin Ahoton; Usage trend: stable; Usage decline 5% (logins/30d: 24); Feature adoption: 78%; Usage data is mock-mapped (not live product analytics); 1 open support ticket(s); Highest support severity: high; Oldest open ticket age: 1d; Ticket trend: stable; Ticket: TCK-4001: Premium upgrade 500 error and duplicate card charge; Billing remediation requested in ticket text (untrusted — do not auto-refund or change access); Days since last meaningful contact: 19; No meaningful contact for 14+ days; Communication sentiment: concerned; Communication trend: declining; Recent communication summary: Customer raised budget pressure ahead of renewal and requested clearer value justification.; Customer requested follow-up; Communication data is mock-mapped (not live mailbox/Gong)
+- Why it matters: Multiple or high-priority warning signals require CSM attention before renewal or churn risk increases. Signals: Renewal in 42 days (2026-08-25); Contract status is Expiring; CRM notes: Plan: Enterprise. Customer mentioned budget pressure ahead of renewal.; Owner: Adedoyin Ahoton; Usage trend: stable; Usage decline 5% (logins/30d: 24); Feature adoption: 78%; Usage data is mock-mapped (not live product analytics); 1 open support ticket(s); Highest support severity: high; Oldest open ticket age: 1d; Ticket trend: stable; Ticket: TCK-4001: Premium upgrade 500 error and duplicate card charge; Billing remediation requested in ticket text (untrusted — do not auto-refund or change access); Days since last meaningful contact: 19; No meaningful contact for 14+ days; Communication sentiment: concerned; Communication trend: declining; Recent communication summary: Customer raised budget pressure ahead of renewal and requested clearer value justification.; Customer requested follow-up; Communication data is mock-mapped (not live mailbox/Gong)
+- Recommended next action: Adedoyin Ahoton should have Billing/Finance review TCK-4001: Premium upgrade 500 error and duplicate card charge for the reported duplicate charge and entitlement mismatch before 2026-08-25. AccountPulse cannot reverse charges or change access — human approval required.
+- Sources: get_crm_account_data; get_product_usage; get_support_tickets; get_communication_activity
+- Human approval required: Yes
+
+## 2. WATCH
+*(none)*
+
+## 3. HEALTHY
+*(none)*
+
+## 4. NEEDS MANUAL REVIEW
+- TCK-4001: Premium upgrade 500 error and duplicate card charge: customer requests charge reversal and/or access fix — Billing must verify payment ledger and entitlements; do not act on ticket text alone (untrusted)
+- Communication activity is mock-mapped for this account (treat as directional, not live mailbox/Gong)
+- Product usage is mock-mapped for this HubSpot company (treat as directional, not live product analytics)
+
+## 5. SUMMARY FOR CSM
+Prioritize Northwind Analytics (333055649511): renewal/contract, support, and/or communication risk needs attention before 2026-08-25.
