@@ -3,7 +3,7 @@
 from tools.support.get_support_tickets import fetch_support_tickets
 
 
-def test_healthy_stable_support_account():
+def test_case1_golden_support_account():
     result = fetch_support_tickets("acc_001")
 
     assert result["ok"] is True
@@ -11,6 +11,10 @@ def test_healthy_stable_support_account():
     assert result["support_account_id"] == "acc_001"
     assert result["account"]["open_ticket_count"] == 1
     assert result["account"]["ticket_trend"] == "stable"
+    assert result["account"]["highest_severity"] == "high"
+    assert result["account"]["oldest_ticket_age_days"] >= 7
+    assert result["account"]["unresolved_high_severity_over_7_days"] is True
+    assert result["signals"]["high_severity_unresolved_7d"] is True
 
 
 def test_high_risk_support_account():

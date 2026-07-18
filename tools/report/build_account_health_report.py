@@ -10,10 +10,18 @@ from typing import Any
 
 from tools.communications import fetch_communication_activity
 from tools.crm import get_crm_account_data
+from tools.crm.mock_data import list_mock_account_ids
 from tools.support import fetch_support_tickets
 from tools.usage.get_product_usage import fetch_product_usage
 
 RiskLevel = str  # ACTION NEEDED | WATCH | HEALTHY | NEEDS MANUAL REVIEW
+
+_PORTFOLIO_SECTION_ORDER = (
+    "ACTION NEEDED",
+    "WATCH",
+    "HEALTHY",
+    "NEEDS MANUAL REVIEW",
+)
 
 
 def _crm_signals(crm: dict[str, Any]) -> list[str]:
@@ -161,6 +169,14 @@ def _classify(
     if not crm_ok and not usage_ok and not support_ok and not communication_ok:
         return "NEEDS MANUAL REVIEW"
 
+    # Eval Card Case 4: support API failure with other sources available →
+    # do not guess ticket status; require manual review.
+    support_failed = (not support_ok) and bool(
+        support.get("error") or support.get("message")
+    )
+    if support_failed and (crm_ok or usage_ok or communication_ok):
+        return "NEEDS MANUAL REVIEW"
+
     action = False
     watch = False
     warning_count = 0
@@ -287,11 +303,20 @@ def _next_action(
             f"language. Human approval required before {renewal}."
         )
 
-    if billing_ticket and has_renewal_risk:
+    open_ticket = subjects[0] if subjects else None
+
+    # Eval Card Case 1: review ticket + schedule check-in within hours.
+    if open_ticket and (risk == "ACTION NEEDED" or has_renewal_risk):
+        billing_note = (
+            " Billing/Finance must verify any charge remediation "
+            "(no auto-refund)."
+            if billing
+            else ""
+        )
         return (
-            f"Billing/Finance verify {billing_ticket} (no auto-refund) and "
-            f"{owner} confirm exec sponsor / schedule check-in before "
-            f"{renewal} — human approval required."
+            f"{owner} should review {open_ticket} and schedule a customer "
+            f"check-in within 24 hours.{billing_note} Human approval "
+            f"required before {renewal}."
         )
     if billing_ticket:
         return (
@@ -461,6 +486,12 @@ def build_account_health_report(
             "Product usage is mock-mapped for this HubSpot company "
             "(treat as directional, not live product analytics)"
         )
+    if risk == "NEEDS MANUAL REVIEW" and signals:
+        manual_review.insert(
+            0,
+            f"Available signals (incomplete — do not guess missing tools): "
+            f"{'; '.join(signals)}",
+        )
     if not manual_review:
         manual_review.append("*(none)*")
 
@@ -510,8 +541,8 @@ def build_account_health_report(
         )
     else:
         summary = (
-            f"Cannot fully assess {label} until missing CRM/usage data "
-            "is available."
+            f"Cannot fully assess {label}: missing or conflicting tool data "
+            "requires manual review before acting on incomplete signals."
         )
 
     return "\n".join(
@@ -587,3 +618,149 @@ def analyze_account_bundle(account_id: str) -> dict[str, Any]:
             account_id, crm, usage, support, communication
         ),
     }
+
+
+def resolve_portfolio_account_ids(
+    account_ids: list[str] | None = None,
+    owner: str | None = None,
+) -> list[str]:
+    """Resolve which accounts belong in a morning briefing."""
+
+    if account_ids:
+        return [aid.strip() for aid in account_ids if aid and str(aid).strip()]
+    return list_mock_account_ids(owner=owner)
+
+
+def _days_to_renewal(bundle: dict[str, Any]) -> int:
+    hs = ((bundle.get("crm") or {}).get("data") or {}).get("health_signals") or {}
+    days = hs.get("days_to_renewal")
+    if isinstance(days, int):
+        return days
+    return 10_000
+
+
+def _compact_portfolio_entry(bundle: dict[str, Any]) -> str:
+    """One compact ranked entry for the morning briefing."""
+
+    crm = bundle.get("crm") or {}
+    data = crm.get("data") or {}
+    account_id = bundle.get("account_id") or "unknown"
+    name = data.get("account_name") or account_id
+    owner = data.get("account_owner") or "—"
+    renewal = data.get("renewal_date") or "—"
+    risk = bundle.get("risk") or "NEEDS MANUAL REVIEW"
+    signals = (
+        list(bundle.get("crm_signals") or [])
+        + list(bundle.get("usage_signals") or [])
+        + list(bundle.get("support_signals") or [])
+        + list(bundle.get("communication_signals") or [])
+    )
+    top = "; ".join(signals[:5]) if signals else "No structured signals available"
+    next_action = _next_action(
+        risk,
+        crm,
+        bundle.get("support") or {},
+        bundle.get("communication") or {},
+    )
+    return "\n".join(
+        [
+            f"- **{name}** (`{account_id}`)",
+            f"  - Risk level: {risk}",
+            f"  - Owner: {owner}; Renewal: {renewal}",
+            f"  - Top signals: {top}",
+            f"  - Recommended next action: {next_action}",
+            "  - Human approval required: Yes",
+        ]
+    )
+
+
+def build_morning_briefing(bundles: list[dict[str, Any]]) -> str:
+    """Merge per-account bundles into one prioritized CSM morning briefing."""
+
+    buckets: dict[str, list[dict[str, Any]]] = {
+        risk: [] for risk in _PORTFOLIO_SECTION_ORDER
+    }
+    for bundle in bundles:
+        risk = bundle.get("risk") or "NEEDS MANUAL REVIEW"
+        if risk not in buckets:
+            risk = "NEEDS MANUAL REVIEW"
+        buckets[risk].append(bundle)
+
+    for risk in buckets:
+        buckets[risk].sort(key=_days_to_renewal)
+
+    sections: list[str] = ["# AccountPulse morning briefing", ""]
+    counts = {risk: len(buckets[risk]) for risk in _PORTFOLIO_SECTION_ORDER}
+    sections.append(
+        f"Reviewed **{len(bundles)}** assigned account(s): "
+        f"{counts['ACTION NEEDED']} ACTION NEEDED · "
+        f"{counts['WATCH']} WATCH · "
+        f"{counts['HEALTHY']} HEALTHY · "
+        f"{counts['NEEDS MANUAL REVIEW']} NEEDS MANUAL REVIEW"
+    )
+    sections.append("")
+
+    for index, risk in enumerate(_PORTFOLIO_SECTION_ORDER, start=1):
+        sections.append(f"## {index}. {risk}")
+        entries = buckets[risk]
+        if not entries:
+            sections.append("*(none)*")
+        else:
+            sections.append("\n\n".join(_compact_portfolio_entry(b) for b in entries))
+        sections.append("")
+
+    priority_names: list[str] = []
+    for risk in ("ACTION NEEDED", "NEEDS MANUAL REVIEW", "WATCH"):
+        for bundle in buckets[risk]:
+            data = (bundle.get("crm") or {}).get("data") or {}
+            label = data.get("account_name") or bundle.get("account_id")
+            priority_names.append(f"{label} ({risk})")
+
+    sections.append("## 5. SUMMARY FOR CSM")
+    if priority_names:
+        sections.append(
+            "Work top-down: "
+            + "; ".join(priority_names)
+            + ". Verify evidence before any customer-facing action — "
+            "human approval required."
+        )
+    else:
+        sections.append(
+            "No elevated-risk accounts in this briefing. Keep normal cadence; "
+            "human approval still required before outreach."
+        )
+
+    return "\n".join(sections).rstrip() + "\n"
+
+
+def analyze_portfolio_bundle(
+    account_ids: list[str] | None = None,
+    owner: str | None = None,
+) -> dict[str, Any]:
+    """Fetch and classify multiple accounts for a morning briefing."""
+
+    resolved = resolve_portfolio_account_ids(account_ids=account_ids, owner=owner)
+    bundles = [analyze_account_bundle(account_id) for account_id in resolved]
+    report = build_morning_briefing(bundles)
+    counts = {risk: 0 for risk in _PORTFOLIO_SECTION_ORDER}
+    for bundle in bundles:
+        risk = bundle.get("risk") or "NEEDS MANUAL REVIEW"
+        if risk not in counts:
+            risk = "NEEDS MANUAL REVIEW"
+        counts[risk] += 1
+    return {
+        "account_ids": resolved,
+        "owner": owner,
+        "accounts": bundles,
+        "counts": counts,
+        "report": report,
+    }
+
+
+def analyze_portfolio(
+    account_ids: list[str] | None = None,
+    owner: str | None = None,
+) -> str:
+    """Return a prioritized multi-account morning briefing report."""
+
+    return analyze_portfolio_bundle(account_ids=account_ids, owner=owner)["report"]

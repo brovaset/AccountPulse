@@ -22,9 +22,11 @@ It does **not** send email/Slack, update CRM, approve refunds, change contracts,
 | Tool | Purpose | Data today |
 |------|---------|------------|
 | `get_crm_account_data` | Owner, renewal, contract, notes | Mock + live HubSpot |
-| `get_product_usage` | Logins, trend, adoption, decline | Mock (HubSpot IDs mapped) |
-| `get_support_tickets` | Open tickets, severity, age | Mock |
-| `get_communication_activity` | Contact recency, sentiment, NPS cues | Mock |
+| `get_product_usage` | Logins, trend, adoption, decline | Mock + live Gainsight |
+| `get_support_tickets` | Open tickets, severity, age | Mock + live Zendesk |
+| `get_communication_activity` | Contact recency, sentiment, NPS cues | Mock + live Gmail |
+
+Live connectors activate when credentials are set (or `*_PROVIDER` is forced). Without credentials, tools stay on mock. Salesforce CRM is deferred.
 
 Tool details and response shapes: [`tools/README.md`](tools/README.md).
 
@@ -45,6 +47,11 @@ CRM_PROVIDER=mock python -c "from tools.report import analyze_account; print(ana
 
 # Same via agent entrypoint (defaults to deterministic)
 CRM_PROVIDER=mock python agent.py
+
+# Morning briefing — all assigned mock accounts, prioritized
+CRM_PROVIDER=mock python agent.py --briefing
+# Or one owner's book:
+CRM_PROVIDER=mock BRIEFING_OWNER="Jordan Lee" python agent.py --briefing
 ```
 
 Optional live HubSpot (when reachable):
@@ -66,7 +73,7 @@ REPORT_MODE=ollama MODEL_PROVIDER=ollama python agent.py
 uv run streamlit run app.py
 ```
 
-Opens a local page to pick an account, run a review, and explore signals interactively.
+Opens a local page to pick an account, run a single review, or run a **morning briefing** across all mock assigned accounts.
 
 ## Tests
 

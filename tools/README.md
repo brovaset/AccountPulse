@@ -134,6 +134,20 @@ tools=[
 
 If `ok` is `False`, mark that account section **NEEDS MANUAL REVIEW** — do not invent CRM fields.
 
+## Phase 3 live connectors
+
+| Source | Provider env | Credentials |
+|--------|--------------|-------------|
+| Support | `SUPPORT_PROVIDER=auto\|mock\|zendesk` | `ZENDESK_SUBDOMAIN`, `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN` |
+| Usage | `USAGE_PROVIDER=auto\|mock\|gainsight` | `GAINSIGHT_BASE_URL`, `GAINSIGHT_ACCESS_KEY` |
+| Communications | `COMMUNICATION_PROVIDER=auto\|mock\|gmail` | `GMAIL_ACCESS_TOKEN` |
+
+Without credentials (or with `*_PROVIDER=mock`), each tool keeps using local fixtures. Structured `{ok:false}` errors are returned when a live provider is forced and the upstream call fails — the report path marks that source under **NEEDS MANUAL REVIEW**.
+
+Salesforce CRM is deferred; HubSpot remains the live CRM path.
+
+See root `.env.example` for field-map overrides (`ZENDESK_EXTERNAL_ID_MAP`, `GAINSIGHT_COMPANY_ID_MAP`, `GMAIL_QUERY_MAP`).
+
 ## Setup
 
 ```bash

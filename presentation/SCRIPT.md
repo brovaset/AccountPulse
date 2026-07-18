@@ -68,7 +68,7 @@ Show that Northwind appears **only** under ACTION NEEDED:
 - Renewal pressure + budget notes
 - High-severity billing ticket (TCK-4001)
 - Contact gap / concerned sentiment
-- Recommended next action pairs billing verification with owner sponsor check-in
+- Recommended next action: review the open ticket and schedule a customer check-in within 24 hours (billing verify if charge remediation is requested)
 - **Sources** list all four tools
 - **WATCH** and **HEALTHY** are empty (`*(none)*`)
 - **Human approval required: Yes**

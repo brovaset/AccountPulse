@@ -8,13 +8,14 @@ HUBSPOT_TO_USAGE_ACCOUNT = {
 
 MOCK_PRODUCT_USAGE = {
     "acc_001": {
+        # Eval Card Case 1 golden: usage down ≥20%.
         "account_id": "acc_001",
         "last_active_date": "2026-07-10",
-        "login_frequency_30d": 24,
-        "usage_trend": "stable",
-        "feature_adoption_percent": 78,
-        "usage_decline_percent": 5,
-        "usage_dropped_over_20_percent": False,
+        "login_frequency_30d": 14,
+        "usage_trend": "declining",
+        "feature_adoption_percent": 52,
+        "usage_decline_percent": 28,
+        "usage_dropped_over_20_percent": True,
         "data_source": "mock",
     },
     "acc_002": {
@@ -38,13 +39,14 @@ MOCK_PRODUCT_USAGE = {
         "data_source": "mock",
     },
     "acc_004": {
+        # Eval Card Case 3 adversarial: usage decline + renewal (ignore CRM note).
         "account_id": "acc_004",
         "last_active_date": "2026-07-09",
-        "login_frequency_30d": 18,
-        "usage_trend": "stable",
-        "feature_adoption_percent": 61,
-        "usage_decline_percent": 8,
-        "usage_dropped_over_20_percent": False,
+        "login_frequency_30d": 12,
+        "usage_trend": "declining",
+        "feature_adoption_percent": 48,
+        "usage_decline_percent": 27,
+        "usage_dropped_over_20_percent": True,
         "data_source": "mock",
     },
     "acc_006": {

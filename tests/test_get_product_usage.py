@@ -3,12 +3,13 @@
 from tools.usage.get_product_usage import fetch_product_usage
 
 
-def test_healthy_account():
+def test_case1_golden_usage_account():
     result = fetch_product_usage("acc_001")
 
     assert result["ok"] is True
-    assert result["account"]["usage_trend"] == "stable"
-    assert result["account"]["usage_dropped_over_20_percent"] is False
+    assert result["account"]["usage_trend"] == "declining"
+    assert result["account"]["usage_decline_percent"] >= 20
+    assert result["account"]["usage_dropped_over_20_percent"] is True
 
 
 def test_declining_account():
@@ -55,7 +56,8 @@ def test_northwind_hubspot_id_maps_to_acc_001():
     assert result["ok"] is True
     assert result["requested_account_id"] == "333055649511"
     assert result["usage_account_id"] == "acc_001"
-    assert result["account"]["usage_trend"] == "stable"
+    assert result["account"]["usage_trend"] == "declining"
+    assert result["account"]["usage_dropped_over_20_percent"] is True
 
 
 def test_brightleaf_hubspot_id_maps_to_acc_002():

@@ -8,11 +8,12 @@ HUBSPOT_TO_SUPPORT_ACCOUNT = {
 
 MOCK_SUPPORT_TICKETS = {
     "acc_001": {
+        # Eval Card Case 1 golden: high-severity ticket open ≥7 days.
         "account_id": "acc_001",
         "open_ticket_count": 1,
-        "oldest_ticket_age_days": 1,
+        "oldest_ticket_age_days": 9,
         "highest_severity": "high",
-        "unresolved_high_severity_over_7_days": False,
+        "unresolved_high_severity_over_7_days": True,
         "ticket_trend": "stable",
         "recent_ticket_subjects": [
             "TCK-4001: Premium upgrade 500 error and duplicate card charge",

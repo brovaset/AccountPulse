@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 
 from dotenv import load_dotenv
 from strands import Agent, tool
@@ -12,7 +13,7 @@ from tools.communications.get_communication_activity import (
     get_communication_activity,
 )
 from tools.crm import get_crm_account_data as fetch_crm_account_data
-from tools.report import analyze_account
+from tools.report import analyze_account, analyze_portfolio
 from tools.support.get_support_tickets import (
     fetch_support_tickets,
     get_support_tickets,
@@ -422,12 +423,31 @@ def run_ollama_report(account_id: str) -> None:
     print(response)
 
 
+def _wants_morning_briefing(argv: list[str] | None = None) -> bool:
+    args = argv if argv is not None else sys.argv[1:]
+    if "--briefing" in args or "--morning-briefing" in args:
+        return True
+    flag = os.getenv("BRIEFING_MODE", "").strip().lower()
+    return flag in {"1", "true", "yes", "portfolio", "morning", "briefing"}
+
+
 def run() -> None:
-    """Run AccountPulse analysis for the configured account.
+    """Run AccountPulse analysis for one account or a morning briefing.
 
     Official demo path: deterministic analyze_account (stable sections).
+    Portfolio path: ``python agent.py --briefing`` (or BRIEFING_MODE=portfolio).
     Optional: REPORT_MODE=ollama to demonstrate the LLM report flow.
     """
+
+    if _wants_morning_briefing():
+        owner = os.getenv("BRIEFING_OWNER", "").strip() or None
+        scope = f"owner={owner}" if owner else "all mock assigned accounts"
+        print(
+            f"[AccountPulse] Deterministic morning briefing ({scope}). "
+            "Single-account demo: omit --briefing."
+        )
+        print(analyze_portfolio(owner=owner))
+        return
 
     account_id = (
         os.getenv("HUBSPOT_TEST_COMPANY_ID", "").strip()
@@ -445,7 +465,8 @@ def run() -> None:
 
     print(
         f"[AccountPulse] Deterministic report for {account_id} "
-        "(official demo path). Set REPORT_MODE=ollama for optional LLM demo."
+        "(official demo path). Set REPORT_MODE=ollama for optional LLM demo. "
+        "Use --briefing for the multi-account morning briefing."
     )
     print(analyze_account(account_id))
 

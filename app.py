@@ -11,7 +11,10 @@ from dotenv import load_dotenv
 
 from tools.crm.hubspot_client import hubspot_enabled
 from tools.crm.mock_data import MOCK_ACCOUNTS, list_mock_account_ids
-from tools.report.build_account_health_report import analyze_account_bundle
+from tools.report.build_account_health_report import (
+    analyze_account_bundle,
+    analyze_portfolio_bundle,
+)
 
 load_dotenv()
 
@@ -230,7 +233,7 @@ st.markdown(
     <div class="ap-mark">◈</div>
     <h1 class="ap-brand">AccountPulse</h1>
     <p class="ap-tagline">
-      Pick an account, run a live review, and explore signals interactively —
+      Review one account or run a morning briefing across assigned accounts —
       before any human takes action.
     </p>
     <div class="ap-meta">
@@ -279,11 +282,39 @@ with preview_cols[1]:
     show_raw = st.toggle("Show raw tool JSON", value=False)
 
 run_clicked = st.button("Run account health review", type="primary", use_container_width=True)
+briefing_clicked = st.button(
+    "Run morning briefing (all mock accounts)",
+    use_container_width=True,
+)
 st.markdown("</div>", unsafe_allow_html=True)
 
 should_run = run_clicked or (
     auto_run and st.session_state.get("last_run_id") != selected_id
 )
+
+if briefing_clicked:
+    status = st.status("Building morning briefing…", expanded=True)
+    with status:
+        st.markdown(
+            '<div class="ap-step">1. Review assigned mock accounts</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="ap-step">2. Classify and rank by risk</div>',
+            unsafe_allow_html=True,
+        )
+        try:
+            portfolio = analyze_portfolio_bundle()
+            st.session_state["portfolio"] = portfolio
+            st.session_state.pop("bundle", None)
+            st.markdown(
+                '<div class="ap-step done">Done — briefing ready</div>',
+                unsafe_allow_html=True,
+            )
+            status.update(label="Morning briefing complete", state="complete")
+        except Exception as exc:  # noqa: BLE001
+            status.update(label="Morning briefing failed", state="error")
+            st.exception(exc)
 
 if should_run:
     status = st.status("Gathering live signals…", expanded=True)
@@ -294,6 +325,7 @@ if should_run:
         try:
             bundle = analyze_account_bundle(selected_id)
             st.session_state["bundle"] = bundle
+            st.session_state.pop("portfolio", None)
             st.session_state["last_run_id"] = selected_id
             st.markdown(
                 '<div class="ap-step done">Done — report ready</div>',
@@ -303,6 +335,30 @@ if should_run:
         except Exception as exc:  # noqa: BLE001
             status.update(label="Review failed", state="error")
             st.exception(exc)
+
+portfolio = st.session_state.get("portfolio")
+if portfolio:
+    counts = portfolio.get("counts") or {}
+    st.markdown('<div class="ap-panel">', unsafe_allow_html=True)
+    st.markdown("**Morning briefing**")
+    metric_cols = st.columns(4)
+    with metric_cols[0]:
+        st.metric("ACTION NEEDED", counts.get("ACTION NEEDED", 0))
+    with metric_cols[1]:
+        st.metric("WATCH", counts.get("WATCH", 0))
+    with metric_cols[2]:
+        st.metric("HEALTHY", counts.get("HEALTHY", 0))
+    with metric_cols[3]:
+        st.metric("MANUAL REVIEW", counts.get("NEEDS MANUAL REVIEW", 0))
+    st.markdown(portfolio["report"])
+    st.download_button(
+        "Download morning briefing (.md)",
+        data=portfolio["report"],
+        file_name="accountpulse-morning-briefing.md",
+        mime="text/markdown",
+        use_container_width=True,
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
 
 bundle = st.session_state.get("bundle")
 if bundle and bundle.get("account_id") == selected_id:
@@ -427,8 +483,11 @@ if bundle and bundle.get("account_id") == selected_id:
         if sentiment is not None:
             st.caption("Thanks — feedback noted for this review.")
 
-elif not should_run:
-    st.info("Select an account tile, then run a review to explore interactive signals.")
+elif not should_run and not portfolio:
+    st.info(
+        "Select an account for a single review, or run the morning briefing "
+        "across all mock assigned accounts."
+    )
 
 provider = os.getenv("MODEL_PROVIDER", "ollama").strip().lower()
 if provider == "ollama":

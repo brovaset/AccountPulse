@@ -95,5 +95,16 @@ MOCK_ACCOUNTS: dict[str, MockAccountRecord] = {
 }
 
 
-def list_mock_account_ids() -> list[str]:
-    return sorted(MOCK_ACCOUNTS.keys())
+def list_mock_account_ids(owner: str | None = None) -> list[str]:
+    """Return mock account IDs, optionally filtered by account owner."""
+
+    ids = sorted(MOCK_ACCOUNTS.keys())
+    if not owner:
+        return ids
+    owner_norm = owner.strip().lower()
+    return [
+        account_id
+        for account_id in ids
+        if (MOCK_ACCOUNTS[account_id].get("account_owner") or "").lower()
+        == owner_norm
+    ]

@@ -4,8 +4,9 @@ Artifacts for the AccountPulse MVP demo.
 
 | File | Purpose |
 |------|---------|
+| [`PHASE0_PATHFINDER.md`](PHASE0_PATHFINDER.md) | Phase 0 steps to confirm V2 PRD in Pathfinder |
 | [`SCRIPT.md`](SCRIPT.md) | 5-minute talk track: problem, solution, tools, flow, safety |
-| [`CHECKLIST.md`](CHECKLIST.md) | Bath readiness checklist + Pathfinder offline item |
+| [`CHECKLIST.md`](CHECKLIST.md) | Readiness checklist (Phase 0 + presentation pack) |
 | [`evidence/northwind_report.txt`](evidence/northwind_report.txt) | Backup deterministic report for `acc_001` |
 | [`evidence/pytest_results.txt`](evidence/pytest_results.txt) | Latest pytest pass log (44 passed) |
 | [`evidence/screenshots/`](evidence/screenshots/) | Visual evidence for tests + report sections |
