@@ -1,4 +1,4 @@
-"""AccountPulse product-usage tool (mock + Gainsight)."""
+"""AccountPulse product-usage tool (mock + PostHog; optional Gainsight)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,11 @@ from tools.usage.gainsight_client import (
 from tools.usage.mock_data import (
     HUBSPOT_TO_USAGE_ACCOUNT,
     MOCK_PRODUCT_USAGE,
+)
+from tools.usage.posthog_client import (
+    PostHogClientError,
+    fetch_posthog_usage_account,
+    posthog_enabled,
 )
 
 
@@ -48,8 +53,29 @@ def _fetch_mock(normalized_account_id: str) -> dict[str, Any]:
     }
 
 
+def _success(account_id: str, account: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "requested_account_id": account_id,
+        "usage_account_id": account_id,
+        "account": account,
+    }
+
+
+def _failure(account_id: str, code: str, message: str) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "error": code
+        if code in {"account_not_found", "usage_service_unavailable"}
+        else "usage_service_unavailable",
+        "message": message,
+        "requested_account_id": account_id,
+        "account_id": account_id,
+    }
+
+
 def fetch_product_usage(account_id: str) -> dict[str, Any]:
-    """Fetch product-usage data (Gainsight when enabled, otherwise mock)."""
+    """Fetch product-usage data (PostHog/Gainsight when enabled, else mock)."""
 
     if not account_id or not account_id.strip():
         return {
@@ -72,26 +98,24 @@ def fetch_product_usage(account_id: str) -> dict[str, Any]:
             "requested_account_id": normalized_account_id,
         }
 
+    # Prefer PostHog (free tier). Gainsight remains optional if explicitly set.
+    if posthog_enabled():
+        try:
+            return _success(
+                normalized_account_id,
+                fetch_posthog_usage_account(normalized_account_id),
+            )
+        except PostHogClientError as exc:
+            return _failure(normalized_account_id, exc.code, exc.message)
+
     if gainsight_enabled():
         try:
-            account = fetch_gainsight_usage_account(normalized_account_id)
-            return {
-                "ok": True,
-                "requested_account_id": normalized_account_id,
-                "usage_account_id": normalized_account_id,
-                "account": account,
-            }
+            return _success(
+                normalized_account_id,
+                fetch_gainsight_usage_account(normalized_account_id),
+            )
         except GainsightClientError as exc:
-            return {
-                "ok": False,
-                "error": exc.code
-                if exc.code
-                in {"account_not_found", "usage_service_unavailable"}
-                else "usage_service_unavailable",
-                "message": exc.message,
-                "requested_account_id": normalized_account_id,
-                "account_id": normalized_account_id,
-            }
+            return _failure(normalized_account_id, exc.code, exc.message)
 
     return _fetch_mock(normalized_account_id)
 

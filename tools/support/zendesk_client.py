@@ -41,8 +41,8 @@ def zendesk_enabled() -> bool:
     return has_creds
 
 
-def _external_id_map() -> dict[str, str]:
-    raw = os.getenv("ZENDESK_EXTERNAL_ID_MAP", "").strip()
+def _json_map(env_name: str, default: dict[str, str] | None = None) -> dict[str, str]:
+    raw = os.getenv(env_name, "").strip()
     if raw:
         try:
             parsed = json.loads(raw)
@@ -50,7 +50,41 @@ def _external_id_map() -> dict[str, str]:
                 return {str(k): str(v) for k, v in parsed.items()}
         except json.JSONDecodeError:
             pass
-    return dict(DEFAULT_EXTERNAL_ID_MAP)
+    return dict(default or {})
+
+
+def _external_id_map() -> dict[str, str]:
+    mapped = _json_map("ZENDESK_EXTERNAL_ID_MAP")
+    return mapped or dict(DEFAULT_EXTERNAL_ID_MAP)
+
+
+def _org_id_map() -> dict[str, str]:
+    """AccountPulse / HubSpot id → Zendesk organization id."""
+
+    return _json_map("ZENDESK_ORG_ID_MAP")
+
+
+def _resolve_organization_id(account_id: str) -> tuple[Any, str | None]:
+    """Return (organization_id, external_id_used_or_None)."""
+
+    org_id = _org_id_map().get(account_id)
+    if org_id:
+        return org_id, None
+
+    external_id = _external_id_map().get(account_id, account_id)
+    org_payload = _request(
+        "GET",
+        "/organizations/search.json",
+        query={"external_id": external_id},
+    )
+    orgs = org_payload.get("organizations") or []
+    if not orgs:
+        raise ZendeskClientError(
+            "account_not_found",
+            f"No Zendesk organization for account_id={account_id} "
+            f"(org id map miss; external_id={external_id})",
+        )
+    return orgs[0].get("id"), external_id
 
 
 def _auth_header() -> str:
@@ -125,20 +159,7 @@ def _parse_dt(value: str | None) -> datetime | None:
 def fetch_zendesk_support_account(account_id: str) -> dict[str, Any]:
     """Fetch open Zendesk tickets for an AccountPulse / HubSpot account id."""
 
-    external_id = _external_id_map().get(account_id, account_id)
-    org_payload = _request(
-        "GET",
-        "/organizations/search.json",
-        query={"external_id": external_id},
-    )
-    orgs = org_payload.get("organizations") or []
-    if not orgs:
-        raise ZendeskClientError(
-            "account_not_found",
-            f"No Zendesk organization with external_id={external_id}",
-        )
-    org = orgs[0]
-    org_id = org.get("id")
+    org_id, external_id = _resolve_organization_id(account_id)
     tickets_payload = _request(
         "GET",
         f"/organizations/{org_id}/tickets.json",

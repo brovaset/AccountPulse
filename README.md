@@ -22,7 +22,7 @@ It does **not** send email/Slack, update CRM, approve refunds, change contracts,
 | Tool | Purpose | Data today |
 |------|---------|------------|
 | `get_crm_account_data` | Owner, renewal, contract, notes | Mock + live HubSpot |
-| `get_product_usage` | Logins, trend, adoption, decline | Mock + live Gainsight |
+| `get_product_usage` | Logins, trend, adoption, decline | Mock + live PostHog (free); optional Gainsight |
 | `get_support_tickets` | Open tickets, severity, age | Mock + live Zendesk |
 | `get_communication_activity` | Contact recency, sentiment, NPS cues | Mock + live Gmail |
 

@@ -11,10 +11,7 @@ from dotenv import load_dotenv
 
 from tools.crm.hubspot_client import hubspot_enabled
 from tools.crm.mock_data import MOCK_ACCOUNTS, list_mock_account_ids
-from tools.report.build_account_health_report import (
-    analyze_account_bundle,
-    analyze_portfolio_bundle,
-)
+from tools.report import analyze_account_bundle, analyze_portfolio_bundle
 
 load_dotenv()
 

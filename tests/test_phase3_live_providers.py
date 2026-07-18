@@ -95,10 +95,66 @@ def test_zendesk_error_is_structured(monkeypatch):
     assert result["error"] == "support_unavailable"
 
 
+def test_zendesk_org_id_map_skips_external_id_search(monkeypatch):
+    import tools.support.zendesk_client as zd
+
+    monkeypatch.setenv(
+        "ZENDESK_ORG_ID_MAP",
+        '{"acc_001":"51509923853716"}',
+    )
+    monkeypatch.setenv("ZENDESK_SUBDOMAIN", "example")
+    monkeypatch.setenv("ZENDESK_EMAIL", "agent@example.com")
+    monkeypatch.setenv("ZENDESK_API_TOKEN", "token")
+
+    calls: list[str] = []
+
+    def fake_request(method: str, path: str, query: dict[str, str] | None = None):
+        calls.append(path)
+        assert "organizations/search" not in path
+        assert path == "/organizations/51509923853716/tickets.json"
+        return {"tickets": []}
+
+    monkeypatch.setattr(zd, "_request", fake_request)
+    account = zd.fetch_zendesk_support_account("acc_001")
+    assert account["data_source"] == "zendesk"
+    assert account["zendesk_organization_id"] == "51509923853716"
+    assert account["open_ticket_count"] == 0
+    assert calls == ["/organizations/51509923853716/tickets.json"]
+
+
+def test_posthog_success_path(monkeypatch):
+    monkeypatch.setenv("USAGE_PROVIDER", "posthog")
+    monkeypatch.setenv("POSTHOG_HOST", "https://us.posthog.com")
+    monkeypatch.setenv("POSTHOG_PROJECT_ID", "123")
+    monkeypatch.setenv("POSTHOG_PERSONAL_API_KEY", "phx_test")
+
+    def fake_fetch(account_id: str):
+        return {
+            "account_id": account_id,
+            "last_active_date": "2026-07-10",
+            "login_frequency_30d": 10,
+            "usage_trend": "declining",
+            "feature_adoption_percent": 40,
+            "usage_decline_percent": 25,
+            "usage_dropped_over_20_percent": True,
+            "data_source": "posthog",
+        }
+
+    monkeypatch.setattr(usage_mod, "fetch_posthog_usage_account", fake_fetch)
+
+    result = fetch_product_usage("acc_001")
+    assert result["ok"] is True
+    assert result["account"]["data_source"] == "posthog"
+    assert result["account"]["usage_dropped_over_20_percent"] is True
+
+
 def test_gainsight_success_path(monkeypatch):
     monkeypatch.setenv("USAGE_PROVIDER", "gainsight")
     monkeypatch.setenv("GAINSIGHT_BASE_URL", "https://example.gainsightcloud.com")
     monkeypatch.setenv("GAINSIGHT_ACCESS_KEY", "key")
+    # Ensure PostHog path does not steal the call.
+    monkeypatch.delenv("POSTHOG_PERSONAL_API_KEY", raising=False)
+    monkeypatch.delenv("POSTHOG_PROJECT_ID", raising=False)
 
     def fake_fetch(account_id: str):
         return {

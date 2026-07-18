@@ -26,7 +26,7 @@
 | # | Task | Status | Evidence |
 |---|------|--------|----------|
 | 3.1 | Zendesk support | Done | `tools/support/zendesk_client.py`, `SUPPORT_PROVIDER` |
-| 3.2 | Gainsight usage | Done | `tools/usage/gainsight_client.py`, `USAGE_PROVIDER` |
+| 3.2 | Product usage live path | Done | **PostHog (free)** `tools/usage/posthog_client.py`; Gainsight kept optional |
 | 3.3 | Gmail communications | Done | `tools/communications/gmail_client.py`, `COMMUNICATION_PROVIDER` |
 | 3.4 | Salesforce CRM | Deferred | Wait — HubSpot remains the live CRM path |
 
