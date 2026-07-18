@@ -140,6 +140,24 @@ def test_zendesk_default_org_id_map_for_northwind(monkeypatch):
     assert account["zendesk_organization_id"] == "51509923853716"
 
 
+def test_zendesk_empty_org_id_map_keeps_northwind_default(monkeypatch):
+    import tools.support.zendesk_client as zd
+
+    # Empty JSON object previously wiped defaults and forced external_id search.
+    monkeypatch.setenv("ZENDESK_ORG_ID_MAP", "{}")
+    monkeypatch.setenv("ZENDESK_SUBDOMAIN", "example")
+    monkeypatch.setenv("ZENDESK_EMAIL", "agent@example.com")
+    monkeypatch.setenv("ZENDESK_API_TOKEN", "token")
+
+    def fake_request(method: str, path: str, query: dict[str, str] | None = None):
+        assert "organizations/search" not in path
+        return {"tickets": []}
+
+    monkeypatch.setattr(zd, "_request", fake_request)
+    account = zd.fetch_zendesk_support_account("acc_001")
+    assert account["zendesk_organization_id"] == "51509923853716"
+
+
 def test_posthog_success_path(monkeypatch):
     monkeypatch.setenv("USAGE_PROVIDER", "posthog")
     monkeypatch.setenv("POSTHOG_HOST", "https://us.posthog.com")

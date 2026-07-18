@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from tools._http import HttpClientError, basic_auth_header, request_json
+from tools.support.mock_data import HUBSPOT_TO_SUPPORT_ACCOUNT
 
 # Optional: AccountPulse id / HubSpot company id → Zendesk organization external_id
 DEFAULT_EXTERNAL_ID_MAP = {
@@ -65,17 +66,31 @@ def _external_id_map() -> dict[str, str]:
 
 
 def _org_id_map() -> dict[str, str]:
-    """AccountPulse / HubSpot id → Zendesk organization id."""
+    """AccountPulse / HubSpot id → Zendesk organization id.
 
-    return _json_map("ZENDESK_ORG_ID_MAP", DEFAULT_ORG_ID_MAP)
+    Env values override defaults, but defaults still fill missing keys so an
+    empty ``ZENDESK_ORG_ID_MAP={}`` cannot wipe the Northwind demo mapping.
+    """
+
+    merged = dict(DEFAULT_ORG_ID_MAP)
+    merged.update(_json_map("ZENDESK_ORG_ID_MAP"))
+    return merged
 
 
 def _resolve_organization_id(account_id: str) -> tuple[Any, str | None]:
     """Return (organization_id, external_id_used_or_None)."""
 
+    account_id = (account_id or "").strip()
     org_id = _org_id_map().get(account_id)
     if org_id:
-        return org_id, None
+        return str(org_id), None
+
+    # Also try mock-id alias when a HubSpot company id is requested.
+    alias = HUBSPOT_TO_SUPPORT_ACCOUNT.get(account_id)
+    if alias and alias != account_id:
+        org_id = _org_id_map().get(alias)
+        if org_id:
+            return str(org_id), None
 
     external_id = _external_id_map().get(account_id, account_id)
     org_payload = _request(
